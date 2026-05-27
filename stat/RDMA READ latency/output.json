@@ -1,0 +1,26 @@
+node1@node1:~$ ib_read_lat -d rxe0 -F 192.168.56.101
+---------------------------------------------------------------------------------------
+Device not recognized to implement inline feature. Disabling it
+---------------------------------------------------------------------------------------
+                    RDMA_Read Latency Test
+ Dual-port       : OFF          Device         : rxe0
+ Number of qps   : 1            Transport type : IB
+ Connection type : RC           Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : OFF
+ TX depth        : 1
+ Mtu             : 1024[B]
+ Link type       : Ethernet
+ GID index       : 1
+ Outstand reads  : 128
+ rdma_cm QPs     : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0000 QPN 0x0011 PSN 0x5d206b OUT 0x80 RKey 0x000252 VAddr 0x0055e174032000
+ GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:102
+ remote address: LID 0000 QPN 0x0011 PSN 0x8bcbb1 OUT 0x80 RKey 0x0002d8 VAddr 0x00563a5fdb9000
+ GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:101
+---------------------------------------------------------------------------------------
+ #bytes #iterations    t_min[usec]    t_max[usec]  t_typical[usec]    t_avg[usec]    t_stdev[usec]   99% percentile[usec]   99.9% percentile[usec] 
+ 2       1000          217.88         939.14       285.12              302.54             46.43           485.69                  939.14 
+---------------------------------------------------------------------------------------

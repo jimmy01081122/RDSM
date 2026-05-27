@@ -1,0 +1,42 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Compiled executables
+phase2_dsm_benchmark
+*.out
+
+# Runtime outputs - individual runs
+stat/rdma-calibration/
+output/
+results/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.python-version
+venv/
+env/
+
+# System files
+.gitkeep
+*.tmp
+.env

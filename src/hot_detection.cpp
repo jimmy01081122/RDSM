@@ -69,6 +69,11 @@ void HotDetector::detect_hot_objects() {
 
         if (info.is_hot && !was_hot) {
             info.last_hot_timestamp_us = now;
+            auto stats = store_->get_object_stats(object_id);
+            if (stats) {
+                stats->is_hot.store(true);
+                stats->last_hot_timestamp.store(now);
+            }
         }
     }
 }

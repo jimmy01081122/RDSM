@@ -26,6 +26,10 @@ public:
         items_[key] = "\"" + value + "\"";
     }
 
+    void add(const std::string& key, const char* value) {
+        items_[key] = "\"" + std::string(value) + "\"";
+    }
+
     void add(const std::string& key, bool value) {
         items_[key] = value ? "true" : "false";
     }

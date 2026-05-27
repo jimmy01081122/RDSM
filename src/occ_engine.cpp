@@ -11,7 +11,7 @@ OCCEngine::~OCCEngine() {
 }
 
 void OCCEngine::begin_transaction(Transaction& tx) {
-    tx.tx_id = next_tx_id_++;
+    tx.tx_id = next_tx_id_.fetch_add(1);
     tx.read_set_ids.clear();
     tx.read_set_versions.clear();
     tx.write_set.clear();
@@ -25,6 +25,7 @@ void OCCEngine::begin_transaction(Transaction& tx) {
 }
 
 int OCCEngine::read_object(Transaction& tx, uint64_t object_id, uint64_t& value, uint64_t& version) {
+    std::lock_guard<std::mutex> data_lock(store_->mutation_mutex());
     ObjectHeader* obj = store_->get_object_header(object_id);
     if (!obj) {
         return -1;
@@ -167,6 +168,20 @@ int OCCEngine::commit_transaction(Transaction& tx) {
     // 2. Validate read_set versions
     // 3. Apply write_set
     // 4. Release locks
+
+    std::unique_lock<std::mutex> data_lock(store_->mutation_mutex(), std::try_to_lock);
+    if (!data_lock.owns_lock()) {
+        tx.abort_reason = ABORT_LOCK_FAIL;
+        store_->get_global_stats()->lock_fail_count++;
+        for (const auto& p : tx.write_set) {
+            auto stats = store_->get_object_stats(p.first);
+            if (stats) {
+                stats->lock_fail_count++;
+                stats->abort_count++;
+            }
+        }
+        return -1;
+    }
 
     if (try_acquire_locks(tx) != 0) {
         return -1;

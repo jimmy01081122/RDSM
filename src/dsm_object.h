@@ -58,7 +58,7 @@ public:
         std::atomic<uint64_t> validation_fail_count{0};
         std::atomic<uint64_t> abort_count{0};
         std::atomic<uint64_t> last_hot_timestamp{0};
-        bool is_hot;
+        std::atomic<bool> is_hot{false};
     };
 
     ObjectStats* get_object_stats(uint64_t object_id);
@@ -77,6 +77,10 @@ public:
         std::atomic<uint64_t> total_commit_latency_us{0};
         std::atomic<uint64_t> hot_path_tx{0};
         std::atomic<uint64_t> cold_path_tx{0};
+        std::atomic<uint64_t> server_arbitrated_tx{0};
+        std::atomic<uint64_t> hot_path_candidate_tx{0};
+        std::atomic<uint64_t> server_queue_wait_total_us{0};
+        std::atomic<uint64_t> server_queue_wait_count{0};
         std::vector<uint64_t> latency_histogram;  // [0-10us, 10-50us, 50-100us, 100-500us, 500+us]
     };
 
@@ -88,6 +92,9 @@ public:
     // Verification (after run)
     int verify_invariants(uint64_t initial_stock, uint64_t& final_stock, uint64_t& sold_count);
 
+    // Coarse-grained stand-in for remote atomic/object mutation serialization in this prototype.
+    std::mutex& mutation_mutex() { return mutation_mutex_; }
+
 private:
     static constexpr uint32_t MAX_OBJECTS = 1000;
 
@@ -96,6 +103,7 @@ private:
     uint64_t object_count_;
     std::map<uint64_t, ObjectStats> object_stats_;
     std::mutex stats_mutex_;
+    std::mutex mutation_mutex_;
     GlobalStats global_stats_;
 };
 

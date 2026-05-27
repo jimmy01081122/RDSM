@@ -39,7 +39,7 @@ int DSMObjectStore::create_object(uint64_t object_id, ObjectType type, uint64_t 
     obj->last_writer_tx_id = 0;
     obj->value = init_value;
 
-    object_stats_[object_id].is_hot = false;
+    object_stats_[object_id].is_hot.store(false);
     object_count_++;
 
     return 0;
@@ -71,31 +71,26 @@ int DSMObjectStore::verify_invariants(uint64_t initial_stock, uint64_t& final_st
     // sold_count + stock = initial_stock
     // no duplicate order commits
 
-    ObjectHeader* stock_obj = nullptr;
     ObjectHeader* sold_obj = nullptr;
+    final_stock = 0;
 
-    // Find stock and sold_count objects
+    std::lock_guard<std::mutex> data_lock(mutation_mutex_);
+
+    // Sum all stock objects and find sold_count.
     for (uint64_t i = 0; i < object_count_; i++) {
         if (objects_[i].object_type == TYPE_PRODUCT_STOCK) {
-            stock_obj = &objects_[i];
+            final_stock += objects_[i].value;
         } else if (objects_[i].object_type == TYPE_SOLD_COUNT) {
             sold_obj = &objects_[i];
         }
     }
 
-    if (!stock_obj || !sold_obj) {
+    if (!sold_obj) {
         global_stats_.invariant_violation_count++;
         return -1;
     }
 
-    final_stock = stock_obj->value;
     sold_count = sold_obj->value;
-
-    // Check invariants
-    if (final_stock < 0) {
-        global_stats_.invariant_violation_count++;
-        return -1;
-    }
 
     if (sold_count + final_stock != initial_stock) {
         global_stats_.invariant_violation_count++;

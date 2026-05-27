@@ -7,6 +7,7 @@
 #include <map>
 #include <chrono>
 #include <memory>
+#include <atomic>
 
 enum AbortReason {
     ABORT_LOCK_FAIL = 0,
@@ -57,7 +58,7 @@ public:
 
 private:
     DSMObjectStore* store_;
-    uint64_t next_tx_id_;
+    std::atomic<uint64_t> next_tx_id_;
 
     // OCC commit phase: try to acquire locks and validate
     int try_acquire_locks(Transaction& tx);

@@ -7,6 +7,7 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <memory>
 
 struct BenchmarkConfig {
     // Workload parameters
@@ -15,6 +16,8 @@ struct BenchmarkConfig {
     uint32_t num_threads;
     double write_ratio;
     std::string access_pattern;  // uniform, zipfian_0.8, zipfian_0.99
+    std::string application_case;
+    double hot_access_probability;
     uint32_t duration_sec;
     uint32_t max_retries;
 
@@ -31,6 +34,7 @@ struct BenchmarkConfig {
     double hot_threshold;
     uint32_t hot_window_ms;
     uint32_t hot_min_access;
+    uint32_t hot_refresh_interval;
 
     // Hybrid arbitration parameters
     bool hybrid_enabled;
@@ -113,6 +117,7 @@ public:
     int initialize_client();
     int run_benchmark();
     RunResult get_result();
+    DSMObjectStore* get_store() { return store_.get(); }
 
 private:
     BenchmarkConfig config_;

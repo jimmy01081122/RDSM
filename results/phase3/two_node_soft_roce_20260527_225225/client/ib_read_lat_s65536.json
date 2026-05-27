@@ -1,0 +1,15 @@
+{
+  "phase": "phase3_two_node_soft_roce_validation",
+  "role": "client",
+  "client_hostname": "node2",
+  "server_ip": "192.168.56.101",
+  "rdma_device": "rxe0",
+  "test": "ib_read_lat",
+  "payload_size_bytes": 65536,
+  "command": "ib_read_lat -d rxe0 -F -s 65536 -n 1000 192.168.56.101",
+  "start_time": "2026-05-27T22:55:28+00:00",
+  "end_time": "2026-05-27T22:56:16+00:00",
+  "exit_code": 0,
+  "stdout": "---------------------------------------------------------------------------------------\n---------------------------------------------------------------------------------------\n                    RDMA_Read Latency Test\n Dual-port       : OFF\t\tDevice         : rxe0\n Number of qps   : 1\t\tTransport type : IB\n Connection type : RC\t\tUsing SRQ      : OFF\n PCIe relax order: ON\n ibv_wr* API     : OFF\n TX depth        : 1\n Mtu             : 1024[B]\n Link type       : Ethernet\n GID index       : 1\n Outstand reads  : 128\n rdma_cm QPs\t : OFF\n Data ex. method : Ethernet\n---------------------------------------------------------------------------------------\n local address: LID 0000 QPN 0x0011 PSN 0x70a5ae OUT 0x80 RKey 0x00026c VAddr 0x007fdd6cb3e000\n GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:102\n remote address: LID 0000 QPN 0x0011 PSN 0xf9183e OUT 0x80 RKey 0x000295 VAddr 0x007f3eeb3b0000\n GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:101\n---------------------------------------------------------------------------------------\n #bytes #iterations    t_min[usec]    t_max[usec]  t_typical[usec]    t_avg[usec]    t_stdev[usec]   99% percentile[usec]   99.9% percentile[usec] \n 65536   1000          1548.06        1000439.48      1922.79  \t       45565.77     \t167301.11\t\t968890.08 \t\t1000439.48\n---------------------------------------------------------------------------------------\n",
+  "stderr": "Device not recognized to implement inline feature. Disabling it\n"
+}

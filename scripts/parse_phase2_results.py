@@ -10,7 +10,7 @@ from statistics import mean, median, stdev
 
 
 RESULTS_DIR = Path("./results/phase2")
-REPORT_FILE = Path("./report.md")
+REPORT_FILE = Path("./results/phase2/phase2_report.md")
 
 
 def load_json(path):

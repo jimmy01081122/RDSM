@@ -1,0 +1,15 @@
+{
+  "phase": "phase3_two_node_soft_roce_validation",
+  "role": "client",
+  "client_hostname": "node2",
+  "server_ip": "192.168.56.101",
+  "rdma_device": "rxe0",
+  "test": "ib_write_bw",
+  "payload_size_bytes": 65536,
+  "command": "ib_write_bw -d rxe0 -F -s 65536 -D 2 192.168.56.101",
+  "start_time": "2026-05-27T22:56:27+00:00",
+  "end_time": "2026-05-27T22:56:30+00:00",
+  "exit_code": 0,
+  "stdout": "---------------------------------------------------------------------------------------\n                    RDMA_Write BW Test\n Dual-port       : OFF\t\tDevice         : rxe0\n Number of qps   : 1\t\tTransport type : IB\n Connection type : RC\t\tUsing SRQ      : OFF\n PCIe relax order: ON\n ibv_wr* API     : OFF\n TX depth        : 128\n CQ Moderation   : 1\n Mtu             : 1024[B]\n Link type       : Ethernet\n GID index       : 1\n Max inline data : 0[B]\n rdma_cm QPs\t : OFF\n Data ex. method : Ethernet\n---------------------------------------------------------------------------------------\n local address: LID 0000 QPN 0x0011 PSN 0x1e2f70 RKey 0x0002e8 VAddr 0x007f323e62a000\n GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:102\n remote address: LID 0000 QPN 0x0011 PSN 0x619624 RKey 0x000283 VAddr 0x007fc67dd91000\n GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:101\n---------------------------------------------------------------------------------------\n #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]\n 65536      980              0.00               29.58  \t\t   0.000473\n---------------------------------------------------------------------------------------\n",
+  "stderr": ""
+}

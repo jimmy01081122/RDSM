@@ -1,0 +1,24 @@
+---------------------------------------------------------------------------------------
+                    RDMA_Write BW Test
+ Dual-port       : OFF		Device         : rxe0
+ Number of qps   : 1		Transport type : IB
+ Connection type : RC		Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : OFF
+ TX depth        : 128
+ CQ Moderation   : 1
+ Mtu             : 1024[B]
+ Link type       : Ethernet
+ GID index       : 1
+ Max inline data : 0[B]
+ rdma_cm QPs	 : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0000 QPN 0x0011 PSN 0x9a6675 RKey 0x000229 VAddr 0x005587d7a38000
+ GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:102
+ remote address: LID 0000 QPN 0x0011 PSN 0xd9d32b RKey 0x000250 VAddr 0x0055791c700000
+ GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:101
+---------------------------------------------------------------------------------------
+ #bytes     #iterations    BW peak[MB/sec]    BW average[MB/sec]   MsgRate[Mpps]
+ 16384      4694             0.00               36.66  		   0.002347
+---------------------------------------------------------------------------------------

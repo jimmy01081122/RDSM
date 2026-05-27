@@ -1,0 +1,24 @@
+---------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------
+                    RDMA_Read Latency Test
+ Dual-port       : OFF		Device         : rxe0
+ Number of qps   : 1		Transport type : IB
+ Connection type : RC		Using SRQ      : OFF
+ PCIe relax order: ON
+ ibv_wr* API     : OFF
+ TX depth        : 1
+ Mtu             : 1024[B]
+ Link type       : Ethernet
+ GID index       : 1
+ Outstand reads  : 128
+ rdma_cm QPs	 : OFF
+ Data ex. method : Ethernet
+---------------------------------------------------------------------------------------
+ local address: LID 0000 QPN 0x0011 PSN 0x84956c OUT 0x80 RKey 0x000280 VAddr 0x0056172a075000
+ GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:102
+ remote address: LID 0000 QPN 0x0011 PSN 0x84497b OUT 0x80 RKey 0x000256 VAddr 0x0055c6b76ac000
+ GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:101
+---------------------------------------------------------------------------------------
+ #bytes #iterations    t_min[usec]    t_max[usec]  t_typical[usec]    t_avg[usec]    t_stdev[usec]   99% percentile[usec]   99.9% percentile[usec] 
+ 16384   1000          494.83         487411.31      699.25   	       1154.45     	6904.11		5511.82 		487411.31
+---------------------------------------------------------------------------------------

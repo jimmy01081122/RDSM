@@ -1,0 +1,15 @@
+{
+  "phase": "phase3_two_node_soft_roce_validation",
+  "role": "client",
+  "client_hostname": "node2",
+  "server_ip": "192.168.56.101",
+  "rdma_device": "rxe0",
+  "test": "ib_write_lat",
+  "payload_size_bytes": 256,
+  "command": "ib_write_lat -d rxe0 -F -s 256 -n 1000 192.168.56.101",
+  "start_time": "2026-05-27T22:53:39+00:00",
+  "end_time": "2026-05-27T22:53:40+00:00",
+  "exit_code": 0,
+  "stdout": "---------------------------------------------------------------------------------------\n                    RDMA_Write Latency Test\n Dual-port       : OFF\t\tDevice         : rxe0\n Number of qps   : 1\t\tTransport type : IB\n Connection type : RC\t\tUsing SRQ      : OFF\n PCIe relax order: OFF\n ibv_wr* API     : OFF\n TX depth        : 1\n Mtu             : 1024[B]\n Link type       : Ethernet\n GID index       : 1\n Max inline data : 0[B]\n rdma_cm QPs\t : OFF\n Data ex. method : Ethernet\n---------------------------------------------------------------------------------------\n local address: LID 0000 QPN 0x0011 PSN 0x6b7de5 RKey 0x0002b9 VAddr 0x005634da1a2000\n GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:102\n remote address: LID 0000 QPN 0x0011 PSN 0x39000 RKey 0x000246 VAddr 0x00562d7540e000\n GID: 00:00:00:00:00:00:00:00:00:00:255:255:192:168:56:101\n---------------------------------------------------------------------------------------\n #bytes #iterations    t_min[usec]    t_max[usec]  t_typical[usec]    t_avg[usec]    t_stdev[usec]   99% percentile[usec]   99.9% percentile[usec] \n 256     1000          76.75          15508.54      333.91   \t       387.76      \t624.74 \t\t968.18  \t\t15508.54\n---------------------------------------------------------------------------------------\n",
+  "stderr": ""
+}

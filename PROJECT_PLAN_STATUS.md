@@ -31,14 +31,14 @@
 | Phase 1 | `ib_write_bw`, `ib_read_lat`, `ib_write_lat`, `ib_send_lat` validation | 完成 | `results/phase3_soft_roce_validation/summary.md` | 保持為 transport diagnostics。 |
 | Phase 2 | RDMA-style DSM/OCC local protocol prototype | 完成 | `src/dsm_object.*`、`src/occ_engine.*`、`experiments/phase2_dsm_benchmark.cpp` | 文件需持續強調 local protocol benchmark，不是 two-node DSM-over-verbs。 |
 | Phase 2 | Versioned objects, lock bits, read/write sets, validation, commit/retry/abort | 完成 | 同上 | 後續若改 transaction path，需同步更新 correctness checks。 |
-| Phase 3 | Baseline OCC | 完成 | `phase2_dsm_benchmark`、Phase 2/3 result CSV | Final matrix 需重跑 reduced publication-style rows。 |
-| Phase 3 | Backoff OCC | 完成 | `phase2_dsm_benchmark` | Final matrix 需重跑 reduced publication-style rows。 |
+| Phase 3 | Baseline OCC | 完成 | `phase2_dsm_benchmark`、Phase 2/3 result CSV、`results/final_focused_matrix/` | 已納入 reduced final matrix；不需重跑，除非要做延伸驗證。 |
+| Phase 3 | Backoff OCC | 完成 | `phase2_dsm_benchmark`、`results/final_focused_matrix/` | 已納入 reduced final matrix；不需重跑，除非要做延伸驗證。 |
 | Phase 3 | Hot detection as monitoring | 完成 | `hot_detection_occ` / hot counters | Main paper 中作 sanity/appendix，避免當主演算法排名。 |
-| Phase 3 | Static hybrid arbitration | 完成 | `hybrid_arbitration_occ` | Final matrix 需包含 global/per_object/per_shard_8。 |
+| Phase 3 | Static hybrid arbitration | 完成 | `hybrid_arbitration_occ`、`results/final_focused_matrix/` | Final matrix 已包含 global/per_object/per_shard_8。 |
 | Phase 4 | Scalable arbitration queues: global/per_object/per_shard | 完成 | `results/phase4_arbitration/discovery_summary.md` | 目前是 discovery/smoke，不作 final ranking。 |
-| Phase 4 | Queue wait, queue length, service time metrics | 完成 | `results/phase4_arbitration/sanity_check.md`、parser CSV fields | Final matrix 需保留這些欄位。 |
+| Phase 4 | Queue wait, queue length, service time metrics | 完成 | `results/phase4_arbitration/sanity_check.md`、parser CSV fields、`results/final_focused_matrix/summary.csv` | Final matrix 已保留這些欄位。 |
 | Phase 4 | Hot/cold locking-discipline bug fix | 完成 | `src/occ_engine.cpp`、`experiments/phase2_dsm_benchmark.cpp`、`paper.md` | 已修正為 deterministic object-id lock ordering。 |
-| Phase 4b | `sold_counter_mode=global|per_product` | 完成 | `results/phase4b_cleanup/phase4b_cleanup_summary.md` | Final controlled comparison 仍需用較長 reduced settings 重跑。 |
+| Phase 4b | `sold_counter_mode=global|per_product` | 完成 | `results/phase4b_cleanup/phase4b_cleanup_summary.md`、`results/final_sold_counter_comparison/` | Final controlled comparison 已完成 48 rows。 |
 | Phase 4b | Phase 4b artifact verification | 完成 | `results/phase4b_cleanup/verification_summary.md` | 已通過 correctness/metadata/metric checks。 |
 | Phase 5 | Transaction latency sampler | 完成 | `include/latency_sampler.h`、`src/latency_sampler.cpp` | CLI `reservoir` 目前是 bounded rotating sample；不可宣稱 unbiased Algorithm R reservoir sampling。 |
 | Phase 5 | Latency overhead smoke | 完成 | `results/phase5_latency_sampling/latency_overhead_summary.md` | Final sample size 已定為 10000；若之後改變才需重跑 overhead check。 |
@@ -51,8 +51,10 @@
 | Final | Statistical report | 完成 | `results/final_focused_matrix/statistical_report.md` | 已含 mean/stddev/95% CI/repetitions/duration/sampling policy。 |
 | Final | Final `paper.md` convergence | 完成 | `paper.md` | 已納入 Stage 0、final matrix trend analysis、sold-counter comparison、claim boundary。 |
 | Final | Chinese `report.md` convergence | 部分完成 | `report.md` | 已加 stale warning；若需要中文最終論文，需依 `paper.md` 重新整合。 |
+| Final | Chinese `paper_zh.md` report | 完成 | `paper_zh.md` | 依 `paper.md` 生成中文最終報告；英文 `paper.md` 仍為 canonical source。 |
 | Final | Final `HANDOFF.md` convergence | 完成 | `HANDOFF.md` | 已更新 final matrix rows、correctness 與重現指令。 |
 | Final | Project convergence summary | 完成 | `results/final_project_convergence_summary.md` | 用於確認目前 cycle 收束狀態。 |
+| Final | Audit report location | 完成 | `results/final_audit_bug_report.md` | 目前沒有獨立 `audit/*.md`；實際 audit output 在 results 路徑並已於 `HANDOFF.md` 說明。 |
 
 ## Future Work Status
 
@@ -70,7 +72,7 @@
 | Final matrix duration/repetitions | 已執行 `duration_sec=10`, `repetitions=3` | 已完成 |
 | Main thread counts | `1,2,4` | 已定 |
 | Sold-counter policy | Main arbitration-isolation 使用 `per_product`; `global` 僅作 controlled bottleneck comparison | 已定 |
-| Final report language | 目前最終研究報告為英文 `paper.md`；`report.md` 是中文舊快照 | 已定；若要中文最終論文，另行翻整 |
+| Final report language | 英文 canonical report 為 `paper.md`；中文 final report 為 `paper_zh.md`；`report.md` 是中文舊快照 | 已定 |
 
 ## Maintenance Rule
 

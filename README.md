@@ -43,6 +43,34 @@ The main benchmark executable is:
 ./build/phase2_dsm_benchmark
 ```
 
+## Project Structure
+
+```text
+RDSM/
+├── include/                         # Public headers and prototype interfaces
+│   ├── latency_sampler.h            # Bounded transaction latency sampler
+│   └── *.h                          # DSM objects, OCC, backoff, RDMA connection helpers
+├── src/                             # Core implementation
+│   ├── dsm_object.cpp               # Versioned object store and statistics
+│   ├── occ_engine.cpp               # Local RDMA-style OCC transaction engine
+│   ├── server_arbitration.cpp       # Legacy server-arbitration component
+│   ├── latency_sampler.cpp          # Bounded rotating sample implementation
+│   └── rdma_conn.cpp                # Project RDMA wrapper prototype
+├── experiments/
+│   └── phase2_dsm_benchmark.cpp     # Main local DSM/OCC benchmark driver
+├── scripts/                         # Experiment runners and result parsers
+├── results/                         # Checked-in summaries and selected raw artifacts
+│   ├── final_focused_matrix/         # Reduced final focused matrix
+│   └── final_sold_counter_comparison/# Global vs per-product comparison
+├── docs/                            # Methodology notes and Stage 0 source discussion
+├── prev_project/                    # Corrected historical preliminary prototype
+├── paper.md                         # Current English final research report
+├── paper_zh.md                      # Chinese version of the final paper
+├── HANDOFF.md                       # Reproduction/status handoff
+├── PROJECT_PLAN_STATUS.md           # Research checklist
+└── READING_GUIDE.md                 # Chinese reading guide
+```
+
 ## Useful Commands
 
 Run a short benchmark:
@@ -86,9 +114,12 @@ Run the controlled sold-counter comparison:
 ## Current Key Artifacts
 
 - Final paper: `paper.md`
-- Chinese report snapshot: `report.md`
+- Chinese final paper: `paper_zh.md`
+- Chinese report snapshot, if present in the working tree: `report.md`
 - Handoff: `HANDOFF.md`
 - Plan/status checklist: `PROJECT_PLAN_STATUS.md`
+- Reading guide: `READING_GUIDE.md`
+- Corrected previous prototype bundle: `prev_project/`
 - Final matrix: `results/final_focused_matrix/`
 - Sold-counter comparison: `results/final_sold_counter_comparison/`
 - Final convergence summary: `results/final_project_convergence_summary.md`

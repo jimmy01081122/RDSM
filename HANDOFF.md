@@ -28,6 +28,10 @@ Last updated: 2026-05-28 UTC
 - Final sold-counter comparison: `results/final_sold_counter_comparison/`
 - Final convergence summary: `results/final_project_convergence_summary.md`
 - Final audit bug report: `results/final_audit_bug_report.md`
+- Audit output location note: there is currently no separate `audit/*.md` directory; the confirmed audit report and patch plan live at `results/final_audit_bug_report.md`.
+- Chinese final paper: `paper_zh.md`
+- Reading guide: `READING_GUIDE.md`
+- Corrected preliminary prototype bundle: `prev_project/`
 - Paper skeleton: `paper.md`
 - Final focused matrix plan: `final_focused_matrix_plan.md`
 
@@ -356,16 +360,16 @@ results/phase7_two_node_dsm_transaction/correctness_report.md
 
 Allowed future claim: a minimal DSM/OCC transaction path can run over two-node Soft-RoCE. Still forbidden: hardware RDMA performance, production DSM, cluster scalability, and durability.
 
-## Remaining Current-cycle Commands
+## Reproduction Commands for Completed Current-cycle Artifacts
 
-Adaptive calibration target and completed command:
+Adaptive calibration reproduction command:
 
 ```bash
 DURATION_SEC=5 REPETITIONS=2 LATENCY_SAMPLE_SIZE=10000 \
   ./scripts/run_phase5_adaptive_calibration.sh
 ```
 
-Phase-change approximation:
+Phase-change approximation reproduction command:
 
 ```bash
 RESULTS_DIR=./results/phase5_adaptive_routing/phase_change_approx \
@@ -374,7 +378,7 @@ RESULTS_DIR=./results/phase5_adaptive_routing/phase_change_approx \
   ./scripts/run_phase5_phase_change_approx.sh
 ```
 
-Reduced final matrix target:
+Reduced final matrix reproduction command:
 
 ```bash
 DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
@@ -382,7 +386,7 @@ DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
   ./scripts/run_final_focused_matrix.sh
 ```
 
-Smoke subset:
+Final matrix smoke subset reproduction command:
 
 ```bash
 FINAL_MATRIX_SMOKE=1 RESULTS_DIR=./results/final_focused_matrix_smoke \
@@ -393,7 +397,7 @@ FINAL_MATRIX_SMOKE=1 RESULTS_DIR=./results/final_focused_matrix_smoke \
 
 Do not run the reduced final matrix with full latency sampling.
 
-Controlled sold-counter comparison:
+Controlled sold-counter comparison reproduction command:
 
 ```bash
 ./scripts/run_sold_counter_comparison.sh

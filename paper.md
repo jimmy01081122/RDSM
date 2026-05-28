@@ -21,7 +21,7 @@ The contribution is not an absolute hardware RDMA speedup claim. The contributio
 - OCC, backoff, hot-detection, and static-arbitration contention analysis.
 - Per-object and per-shard arbitration queues.
 - Latency sampler with bounded rotating-sample mode and debug-only full sampling.
-- Adaptive routing prototype and calibration plan.
+- Adaptive routing prototype with completed calibration and selected reduced-matrix default.
 - Explicit future plan for project-level two-node RDMA wrapper and DSM transaction validation.
 
 ## 2. Background and Motivation
@@ -145,7 +145,7 @@ estimated_occ_cost_us = base_occ_latency_us + expected_retries * retry_penalty_u
 estimated_arbitration_cost_us = queue_wait_estimate_us + service_time_estimate_us
 ```
 
-A transaction should enter arbitration only when estimated OCC cost exceeds arbitration cost by the routing margin. Current adaptive-routing evidence is smoke-level and calibration-level unless final matrix results are explicitly generated. The scripted phase-change approximation restarts benchmark processes between phases; it is useful as a low-risk approximation but not as evidence of continuous in-process adaptive state transitions.
+A transaction should enter arbitration only when estimated OCC cost exceeds arbitration cost by the routing margin. Calibration has been completed, the selected default is `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, and `hot_shards=8`, and this default is included in the reduced final matrix. The scripted phase-change approximation restarts benchmark processes between phases; it is useful as a low-risk approximation but not as evidence of continuous in-process adaptive state transitions.
 
 ## 10. Final Evaluation
 

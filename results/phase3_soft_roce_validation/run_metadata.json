@@ -1,0 +1,30 @@
+{
+  "scope": "Soft-RoCE verbs transport validation only; not hardware RDMA performance.",
+  "client": {
+    "hostname": "node2",
+    "ip": "192.168.56.102",
+    "vcpu_count": 4,
+    "kernel": "5.15.0-179-generic",
+    "rxe0": "ACTIVE/LINK_UP on enp0s8",
+    "ibv": "rxe0 present; active_mtu=1024 (3); link_layer=Ethernet"
+  },
+  "server": {
+    "hostname": "node1",
+    "ip": "192.168.56.101",
+    "vcpu_count": 4,
+    "kernel": "5.15.0-179-generic",
+    "rxe0": "ACTIVE/LINK_UP on enp0s8",
+    "ibv": "rxe0 present; active_mtu=1024 (3); link_layer=Ethernet"
+  },
+  "artifacts": {
+    "raw_run": "results/phase3/two_node_soft_roce_20260527_225225",
+    "source_summary": "results/phase3/two_node_soft_roce_summary.csv",
+    "legacy_stat_rows": 4,
+    "phase3_rerun_rows": 28
+  },
+  "missing_items": [
+    "ibv_rc_pingpong was not collected in the current artifacts.",
+    "ib_read_bw was not collected in the current artifacts.",
+    "project two_node_rdma_validation READ/WRITE/CAS wrapper is not implemented yet."
+  ]
+}

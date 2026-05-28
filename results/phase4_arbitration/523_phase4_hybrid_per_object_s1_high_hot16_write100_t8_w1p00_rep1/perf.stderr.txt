@@ -17,18 +17,18 @@ Command exited with non-zero status 255
 	Command being timed: "perf stat -e context-switches,cpu-migrations,page-faults -- ./build/phase2_dsm_benchmark --application-case flash_sale --products 64 --users 200 --hot-products 16 --hot-access-prob 1.00 --access-pattern uniform --algorithm hybrid_arbitration_occ --hot-detection-enabled true --hybrid-enabled true --hot-threshold 0.10 --hot-min-access 10 --hot-refresh-interval 64 --arbitration-mode per_object --hot-shards 1 --threads 8 --write-ratio 1.00 --duration-sec 1 --max-retries 100 --output-file ./results/phase4_arbitration/523_phase4_hybrid_per_object_s1_high_hot16_write100_t8_w1p00_rep1/app_metrics.json"
 	User time (seconds): 0.00
 	System time (seconds): 0.00
-	Percent of CPU this job got: 92%
+	Percent of CPU this job got: 91%
 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.01
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 11120
+	Maximum resident set size (kbytes): 11284
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 1486
-	Voluntary context switches: 7
-	Involuntary context switches: 11
+	Minor (reclaiming a frame) page faults: 1489
+	Voluntary context switches: 8
+	Involuntary context switches: 3
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 8

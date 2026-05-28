@@ -1,18 +1,18 @@
 	Command being timed: "./build/phase2_dsm_benchmark --application-case flash_sale --products 64 --users 200 --hot-products 0 --hot-access-prob 0.00 --access-pattern zipfian_0.99 --algorithm hybrid_arbitration_occ --hot-detection-enabled true --hybrid-enabled true --hot-threshold 0.10 --hot-min-access 10 --hot-refresh-interval 64 --arbitration-mode per_shard --hot-shards 4 --threads 16 --write-ratio 1.00 --duration-sec 1 --max-retries 100 --output-file ./results/phase4_arbitration/536_phase4_hybrid_per_shard_s4_zipf99_write100_t16_w1p00_rep1/app_metrics.json"
-	User time (seconds): 0.88
-	System time (seconds): 0.54
-	Percent of CPU this job got: 138%
+	User time (seconds): 0.89
+	System time (seconds): 0.40
+	Percent of CPU this job got: 127%
 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:01.02
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 16088
+	Maximum resident set size (kbytes): 16116
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 5008
-	Voluntary context switches: 17171
-	Involuntary context switches: 1213
+	Minor (reclaiming a frame) page faults: 5016
+	Voluntary context switches: 15130
+	Involuntary context switches: 1136
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 16

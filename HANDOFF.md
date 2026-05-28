@@ -15,7 +15,11 @@ Last updated: 2026-05-27 UTC
 - Phase 3 summary CSV: `results/phase3/two_node_soft_roce_summary.csv`
 - Phase 3 validation report: `results/phase3/phase3_two_node_soft_roce_report.md`
 - Phase 4 preliminary results: `results/phase4_arbitration/`
+- Phase 4 discovery summary: `results/phase4_arbitration/discovery_summary.md`
+- Phase 4 sanity check: `results/phase4_arbitration/sanity_check.md`
+- Phase 3 validation summary bundle: `results/phase3_soft_roce_validation/`
 - Paper skeleton: `paper.md`
+- Final focused matrix plan: `final_focused_matrix_plan.md`
 
 ## Scope Boundary
 
@@ -166,7 +170,7 @@ Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the c
 - Phase 1 legacy `/stat` rows parsed with Phase 3: 4
 - Phase 3 transport evidence: RC QP metadata, Ethernet link type, GID index 1, local GID containing `192.168.56.102`, remote GID containing `192.168.56.101`
 - Phase 4 preliminary rows: 40
-- Phase 4 correctness status: smoke/discovery rows preserve invariants and duplicate-commit checks
+- Phase 4 correctness status: PASS after object-locking fix; smoke/discovery rows preserve invariants and duplicate-commit checks
 
 ## Interpretation Notes
 
@@ -185,6 +189,7 @@ Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the c
 - No remote atomic/CAS validation row is included in Phase 3 yet.
 - Hybrid arbitration uses a coarse mutation lock; future work should shard by hot object or hot-object group.
 - Phase 4 adds queue-level arbitration, but the benchmark is still a local prototype and still has shared application objects such as `sold_count`; do not treat short Phase 4 numbers as final scalability results.
+- The first Phase 4 per-object/per-shard attempt exposed a lock-discipline bug between hot arbitration and OCC cold path. It was fixed by using deterministic per-object data locks in both paths before regenerating the checked-in Phase 4 summaries.
 - Tail latency is approximated from aggregate latency, not sampled percentiles.
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.

@@ -15,20 +15,20 @@ To make the adjusted perf_event_paranoid setting permanent preserve it
 in /etc/sysctl.conf (e.g. kernel.perf_event_paranoid = <setting>)
 Command exited with non-zero status 255
 	Command being timed: "perf stat -e context-switches,cpu-migrations,page-faults -- ./build/phase2_dsm_benchmark --application-case flash_sale --products 64 --users 200 --hot-products 0 --hot-access-prob 0.00 --access-pattern zipfian_0.99 --algorithm hybrid_arbitration_occ --hot-detection-enabled true --hybrid-enabled true --hot-threshold 0.10 --hot-min-access 10 --hot-refresh-interval 64 --arbitration-mode per_shard --hot-shards 4 --threads 8 --write-ratio 1.00 --duration-sec 1 --max-retries 100 --output-file ./results/phase4_arbitration/535_phase4_hybrid_per_shard_s4_zipf99_write100_t8_w1p00_rep1/app_metrics.json"
-	User time (seconds): 0.00
+	User time (seconds): 0.01
 	System time (seconds): 0.00
-	Percent of CPU this job got: 91%
+	Percent of CPU this job got: 100%
 	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:00.01
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 11300
+	Maximum resident set size (kbytes): 11440
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 1492
+	Minor (reclaiming a frame) page faults: 1488
 	Voluntary context switches: 5
-	Involuntary context switches: 8
+	Involuntary context switches: 2
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 8

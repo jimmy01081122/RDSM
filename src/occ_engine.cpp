@@ -2,6 +2,32 @@
 #include <cstring>
 #include <algorithm>
 #include <atomic>
+#include <mutex>
+
+namespace {
+
+std::vector<uint64_t> transaction_object_ids(const Transaction& tx) {
+    std::vector<uint64_t> object_ids = tx.read_set_ids;
+    for (const auto& p : tx.write_set) {
+        object_ids.push_back(p.first);
+    }
+    std::sort(object_ids.begin(), object_ids.end());
+    object_ids.erase(std::unique(object_ids.begin(), object_ids.end()), object_ids.end());
+    return object_ids;
+}
+
+std::vector<std::unique_lock<std::mutex>> lock_transaction_objects(DSMObjectStore* store,
+                                                                  const Transaction& tx) {
+    std::vector<std::unique_lock<std::mutex>> locks;
+    auto object_ids = transaction_object_ids(tx);
+    locks.reserve(object_ids.size());
+    for (uint64_t object_id : object_ids) {
+        locks.emplace_back(store->object_mutex(object_id));
+    }
+    return locks;
+}
+
+} // namespace
 
 OCCEngine::OCCEngine(DSMObjectStore* store)
     : store_(store), next_tx_id_(1) {
@@ -25,7 +51,7 @@ void OCCEngine::begin_transaction(Transaction& tx) {
 }
 
 int OCCEngine::read_object(Transaction& tx, uint64_t object_id, uint64_t& value, uint64_t& version) {
-    std::lock_guard<std::mutex> data_lock(store_->mutation_mutex());
+    std::lock_guard<std::mutex> data_lock(store_->object_mutex(object_id));
     ObjectHeader* obj = store_->get_object_header(object_id);
     if (!obj) {
         return -1;
@@ -169,19 +195,7 @@ int OCCEngine::commit_transaction(Transaction& tx) {
     // 3. Apply write_set
     // 4. Release locks
 
-    std::unique_lock<std::mutex> data_lock(store_->mutation_mutex(), std::try_to_lock);
-    if (!data_lock.owns_lock()) {
-        tx.abort_reason = ABORT_LOCK_FAIL;
-        store_->get_global_stats()->lock_fail_count++;
-        for (const auto& p : tx.write_set) {
-            auto stats = store_->get_object_stats(p.first);
-            if (stats) {
-                stats->lock_fail_count++;
-                stats->abort_count++;
-            }
-        }
-        return -1;
-    }
+    auto data_locks = lock_transaction_objects(store_, tx);
 
     if (try_acquire_locks(tx) != 0) {
         return -1;

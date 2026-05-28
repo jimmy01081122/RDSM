@@ -18,7 +18,7 @@ OCC performs well under low contention because most transactions validate succes
 
 ## 3. Environment Constraints and Methodology
 
-The experiments run in a virtualized Ubuntu + Soft-RoCE environment. The local protocol benchmark is not equivalent to a two-node hardware RDMA deployment. Soft-RoCE transport validation is reported separately from protocol-level DSM/OCC results. Absolute latency and throughput are not hardware claims.
+The experiments run in a constrained virtualized Linux + Ubuntu 22.04 + Soft-RoCE/`rdma_rxe` environment. The local protocol benchmark is not equivalent to a two-node hardware RDMA deployment. Soft-RoCE transport validation is reported separately from protocol-level DSM/OCC results. Absolute latency and throughput are not hardware claims.
 
 ## 4. Phase 1: RDMA-style DSM Prototype
 
@@ -34,7 +34,7 @@ The most reliable Phase 2 signal is the combination of committed tx/sec, retry p
 
 Phase 3 validates two-node Soft-RoCE verbs functionality between node2 and node1 using perftest READ/WRITE/SEND/BW sweeps. It confirms that RC QP setup, GID exchange, CQ completion, and transport-level operations work across two Linux VMs. It does not support hardware RDMA performance claims or stable latency claims.
 
-High latency jitter in the VirtualBox/RXE environment justifies keeping transport validation separate from protocol evaluation.
+High latency jitter in the virtualized Soft-RoCE/`rdma_rxe` environment justifies keeping transport validation separate from protocol evaluation.
 
 ## 7. Phase 4: Scalable Arbitration Queues
 
@@ -69,7 +69,7 @@ For final benchmark configurations, report mean, standard deviation, 95% confide
 
 OCC is enough under low contention. Backoff is often enough when conflicts are moderate and retry timing is the primary issue. Static arbitration helps when hot objects are clear and stable. Adaptive routing becomes necessary when workload phases change or when static hot detection sends too much traffic through queues.
 
-Soft-RoCE and VirtualBox limit performance claims, but they do not invalidate prototype-relative protocol comparisons when the boundary is stated clearly.
+Soft-RoCE, `rdma_rxe`, and virtualization limit performance claims, but they do not invalidate prototype-relative protocol comparisons when the boundary is stated clearly.
 
 ## 11. Limitations
 

@@ -23,12 +23,12 @@ Command exited with non-zero status 255
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 11024
+	Maximum resident set size (kbytes): 11216
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 1481
-	Voluntary context switches: 8
-	Involuntary context switches: 9
+	Minor (reclaiming a frame) page faults: 1484
+	Voluntary context switches: 6
+	Involuntary context switches: 2
 	Swaps: 0
 	File system inputs: 0
 	File system outputs: 8

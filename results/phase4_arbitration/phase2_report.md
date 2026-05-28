@@ -13,13 +13,13 @@ The current hybrid arbitration implementation does not support crash recovery or
 - Raw run directories: `results/phase4_arbitration`
 - Per-run CSV: `results/phase4_arbitration/summary.csv`
 - Grouped CSV: `results/phase4_arbitration/summary_by_config.csv`
-- Run timestamp range: 2026-05-28T06:45:13Z to 2026-05-28T06:45:54Z
+- Run timestamp range: 2026-05-28T06:55:14Z to 2026-05-28T06:55:55Z
 
 ## Correctness
 
-- Invariant violations: 20
+- Invariant violations: 0
 - Duplicate commits: 0
-- Status: FAIL
+- Status: PASS
 
 Checked invariants: stock remains non-negative by unsigned state transition, user balance does not underflow, and `sold_count + final_stock = initial_stock` across all products.
 
@@ -27,7 +27,7 @@ Checked invariants: stock remains non-negative by unsigned state transition, use
 
 | Algorithm | Runs | Commit tx/sec mean | Abort rate mean | Retry/commit mean | Lock fails mean | Validation fails mean | Hot path ratio mean |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| hybrid_arbitration_occ | 40 | 1407664.27 | 0.001 | 0.001 | 1167.1 | 555.8 | 0.723 |
+| hybrid_arbitration_occ | 40 | 1301756.40 | 0.001 | 0.001 | 0.0 | 907.5 | 0.646 |
 
 ## Why Some Summary Values Are 0
 

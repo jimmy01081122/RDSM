@@ -263,17 +263,12 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
 
     const uint64_t service_start_us = OCCEngine::get_time_us();
 
-    std::unique_lock<std::mutex> global_data_lock;
     std::vector<std::unique_lock<std::mutex>> object_locks;
-    if (config.arbitration_mode == "global") {
-        global_data_lock = std::unique_lock<std::mutex>(store->mutation_mutex());
-    } else {
-        object_locks = lock_order_objects(store, {
-            order.product_id,
-            config.num_products + order.user_id,
-            config.num_products + config.num_users,
-        });
-    }
+    object_locks = lock_order_objects(store, {
+        order.product_id,
+        config.num_products + order.user_id,
+        config.num_products + config.num_users,
+    });
 
     ObjectHeader* stock = store->get_object_header(order.product_id);
     ObjectHeader* balance = store->get_object_header(config.num_products + order.user_id);

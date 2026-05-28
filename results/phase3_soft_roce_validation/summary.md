@@ -1,5 +1,7 @@
 # Phase 3 Soft-RoCE Validation Summary
 
+Final-paper note: this directory keeps its historical `phase3` name for reproducibility, but the final phase structure treats this two-VM Soft-RoCE evidence as Phase 1: Two-VM Soft-RoCE Feasibility and Trust Boundary.
+
 This summary validates Soft-RoCE verbs transport functionality only. It does not claim hardware RDMA latency, hardware RDMA bandwidth, RNIC offload behavior, PCIe behavior, switch behavior, or bare-metal cluster scalability.
 
 ## Nodes

@@ -15,9 +15,11 @@ The current environment exposes 4 vCPU/core contexts. Threads 8 and 16 should be
 ## Final Run Policy
 
 ```text
-warmup = 10s
-measurement = 60s
-repetitions = 10
+duration_sec = 10s
+repetitions = 3
+latency_sampling = reservoir
+latency_sample_size = 10000
+adaptive default = routing_margin_us=5, cost_window_ms=500, min_samples_before_adapt=100, adaptive_object_scope=shard, hot_shards=8
 ```
 
 Report mean, standard deviation, 95% confidence interval, repetition count, warmup duration, and measurement duration.
@@ -53,18 +55,16 @@ Main algorithms:
 ```text
 baseline_occ
 backoff_occ
-occ_with_hot_detection_monitoring
-hybrid_static_arbitration_occ
+hybrid_static_arbitration_occ_global
+hybrid_static_arbitration_occ_per_object
+hybrid_static_arbitration_occ_per_shard_8
+hybrid_adaptive_arbitration_occ_per_shard_8
 ```
 
-Phase 4 arbitration comparison for hybrid:
+Sanity/appendix only unless needed for overhead discussion:
 
 ```text
-global
-per_object
-per_shard hot_shards=4
-per_shard hot_shards=8
-per_shard hot_shards=16
+occ_with_hot_detection_monitoring
 ```
 
 Sold counter isolation:
@@ -75,6 +75,13 @@ sold_counter_mode=per_product  # isolates arbitration queue behavior
 ```
 
 Use `per_product` for arbitration-isolation plots and `global` when discussing application-level global metadata bottlenecks.
+
+For the main final matrix, use `sold_counter_mode=per_product`. Run `sold_counter_mode=global` only as a controlled bottleneck comparison for:
+
+```text
+mixed_hot4_write50
+high_hot16_write100
+```
 
 ## Appendix Metadata
 

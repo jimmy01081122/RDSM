@@ -1,0 +1,22 @@
+{
+  "run_id": "003_calib_low_uniform_read95_margin5_window250_rep1",
+  "timestamp": "2026-05-28T11:48:36Z",
+  "algorithm": "hybrid_adaptive_arbitration_occ",
+  "workload": "low_uniform_read95",
+  "thread_count": 2,
+  "duration_sec": 5,
+  "matrix": "phase5_adaptive_calibration",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "routing_margin_us": 5,
+  "cost_window_ms": 250,
+  "min_samples_before_adapt": 100,
+  "adaptive_object_scope": "shard",
+  "arbitration_mode": "per_shard",
+  "hot_shards": 8,
+  "sold_counter_mode": "per_product",
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Adaptive routing calibration only; not a full final matrix."
+}

@@ -11,8 +11,12 @@ BENCHMARK_BIN="${BENCHMARK_BIN:-./build/phase2_dsm_benchmark}"
 RESULTS_DIR="${RESULTS_DIR:-./results/phase5_adaptive_routing/phase_change_approx}"
 DURATION_SEC="${DURATION_SEC:-10}"
 THREADS="${THREADS:-2}"
+REPETITIONS="${REPETITIONS:-1}"
 MAX_RETRIES="${MAX_RETRIES:-100}"
 LATENCY_SAMPLE_SIZE="${LATENCY_SAMPLE_SIZE:-5000}"
+ROUTING_MARGIN_US="${ROUTING_MARGIN_US:-5}"
+COST_WINDOW_MS="${COST_WINDOW_MS:-500}"
+HOT_SHARDS="${HOT_SHARDS:-8}"
 
 mkdir -p "$RESULTS_DIR"
 
@@ -56,38 +60,39 @@ for scenario in "${SCENARIOS[@]}"; do
   IFS=',' read -r -a phases <<< "$phase_list"
   phase_index=0
   for workload in "${phases[@]}"; do
-    run_index=$((run_index + 1))
     phase_index=$((phase_index + 1))
-    run_id=$(printf "%03d_%s_phase%d_%s" "$run_index" "$scenario_name" "$phase_index" "$workload")
-    run_dir="$RESULTS_DIR/$run_id"
-    mkdir -p "$run_dir"
+    for rep in $(seq 1 "$REPETITIONS"); do
+      run_index=$((run_index + 1))
+      run_id=$(printf "%03d_%s_phase%d_%s_rep%d" "$run_index" "$scenario_name" "$phase_index" "$workload" "$rep")
+      run_dir="$RESULTS_DIR/$run_id"
+      mkdir -p "$run_dir"
 
-    read -r -a wargs <<< "$(workload_args "$workload")"
-    app_json="$run_dir/app_metrics.json"
-    stdout_file="$run_dir/benchmark.stdout.txt"
-    os_file="$run_dir/os_time.txt"
+      read -r -a wargs <<< "$(workload_args "$workload")"
+      app_json="$run_dir/app_metrics.json"
+      stdout_file="$run_dir/benchmark.stdout.txt"
+      os_file="$run_dir/os_time.txt"
 
-    echo "Running $run_id"
-    /usr/bin/time -v "$BENCHMARK_BIN" \
-      "${wargs[@]}" \
-      --workload-name "$workload" \
-      --algorithm hybrid_adaptive_arbitration_occ \
-      --arbitration-mode per_shard \
-      --hot-shards 4 \
-      --adaptive-routing on \
-      --routing-margin-us 10 \
-      --cost-window-ms 250 \
-      --min-samples-before-adapt 100 \
-      --adaptive-object-scope shard \
-      --threads "$THREADS" \
-      --duration-sec "$DURATION_SEC" \
-      --max-retries "$MAX_RETRIES" \
-      --latency-sampling reservoir \
-      --latency-sample-size "$LATENCY_SAMPLE_SIZE" \
-      --output-file "$app_json" \
-      > "$stdout_file" 2> "$os_file"
+      echo "Running $run_id"
+      /usr/bin/time -v "$BENCHMARK_BIN" \
+        "${wargs[@]}" \
+        --workload-name "$workload" \
+        --algorithm hybrid_adaptive_arbitration_occ \
+        --arbitration-mode per_shard \
+        --hot-shards "$HOT_SHARDS" \
+        --adaptive-routing on \
+        --routing-margin-us "$ROUTING_MARGIN_US" \
+        --cost-window-ms "$COST_WINDOW_MS" \
+        --min-samples-before-adapt 100 \
+        --adaptive-object-scope shard \
+        --threads "$THREADS" \
+        --duration-sec "$DURATION_SEC" \
+        --max-retries "$MAX_RETRIES" \
+        --latency-sampling reservoir \
+        --latency-sample-size "$LATENCY_SAMPLE_SIZE" \
+        --output-file "$app_json" \
+        > "$stdout_file" 2> "$os_file"
 
-    cat > "$run_dir/manifest.json" <<EOF
+      cat > "$run_dir/manifest.json" <<EOF
 {
   "run_id": "$run_id",
   "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
@@ -98,12 +103,17 @@ for scenario in "${SCENARIOS[@]}"; do
   "matrix": "phase5_phase_change_script_approx",
   "scenario": "$scenario_name",
   "phase_index": $phase_index,
+  "repetition": $rep,
+  "routing_margin_us": $ROUTING_MARGIN_US,
+  "cost_window_ms": $COST_WINDOW_MS,
+  "hot_shards": $HOT_SHARDS,
   "latency_sampling_mode": "reservoir",
   "latency_sample_size": $LATENCY_SAMPLE_SIZE,
   "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
   "scope_note": "Scripted multi-process phase-change approximation; not in-process continuous adaptation evidence."
 }
 EOF
+    done
   done
 done
 
@@ -123,6 +133,7 @@ for manifest_path in sorted(results_dir.glob("*/manifest.json")):
         "run_id": manifest["run_id"],
         "scenario": manifest["scenario"],
         "phase_index": manifest["phase_index"],
+        "repetition": manifest.get("repetition", 1),
         "workload": manifest["workload"],
         "committed_tx_per_sec": metrics.get("committed_tx_per_sec", 0),
         "invariant_violation_count": metrics.get("invariant_violation_count", 0),
@@ -148,12 +159,15 @@ lines = [
     "",
     "Scope: consecutive controlled processes only. This approximates phase changes across runs and does not prove continuous in-process adaptive reaction.",
     "",
-    "| Scenario | Phase | Workload | tx/sec | Samples | Invariants | Duplicates | Route OCC | Route Arb | Insufficient | Oscillation |",
-    "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "",
+    "This is a multi-process scripted approximation. It is not evidence of continuous in-process adaptive state transitions. It is useful only as a low-risk approximation of phase changes.",
+    "",
+    "| Scenario | Phase | Rep | Workload | tx/sec | Samples | Invariants | Duplicates | Route OCC | Route Arb | Insufficient | Oscillation |",
+    "|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|",
 ]
 for row in rows:
     lines.append(
-        f"| {row['scenario']} | {row['phase_index']} | {row['workload']} | "
+        f"| {row['scenario']} | {row['phase_index']} | {row['repetition']} | {row['workload']} | "
         f"{float(row['committed_tx_per_sec']):.0f} | {row['latency_sample_count']} | "
         f"{row['invariant_violation_count']} | {row['duplicate_commit_count']} | "
         f"{row['adaptive_route_to_occ_count']} | {row['adaptive_route_to_arbitration_count']} | "

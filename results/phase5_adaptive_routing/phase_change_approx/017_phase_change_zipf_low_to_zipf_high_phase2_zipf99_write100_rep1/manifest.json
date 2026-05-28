@@ -1,0 +1,19 @@
+{
+  "run_id": "017_phase_change_zipf_low_to_zipf_high_phase2_zipf99_write100_rep1",
+  "timestamp": "2026-05-28T11:55:50Z",
+  "algorithm": "hybrid_adaptive_arbitration_occ",
+  "workload": "zipf99_write100",
+  "thread_count": 2,
+  "duration_sec": 5,
+  "matrix": "phase5_phase_change_script_approx",
+  "scenario": "phase_change_zipf_low_to_zipf_high",
+  "phase_index": 2,
+  "repetition": 1,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "hot_shards": 8,
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Scripted multi-process phase-change approximation; not in-process continuous adaptation evidence."
+}

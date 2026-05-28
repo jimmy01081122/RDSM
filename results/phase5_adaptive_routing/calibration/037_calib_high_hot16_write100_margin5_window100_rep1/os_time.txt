@@ -1,0 +1,23 @@
+	Command being timed: "./build/phase2_dsm_benchmark --application-case flash_sale --products 64 --users 200 --hot-products 16 --hot-access-prob 1.00 --access-pattern uniform --write-ratio 1.00 --workload-name high_hot16_write100 --algorithm hybrid_adaptive_arbitration_occ --arbitration-mode per_shard --hot-shards 8 --sold-counter-mode per_product --adaptive-routing on --routing-margin-us 5 --cost-window-ms 100 --min-samples-before-adapt 100 --adaptive-object-scope shard --threads 2 --duration-sec 5 --max-retries 100 --latency-sampling reservoir --latency-sample-size 10000 --output-file ./results/phase5_adaptive_routing/calibration/037_calib_high_hot16_write100_margin5_window100_rep1/app_metrics.json"
+	User time (seconds): 4.03
+	System time (seconds): 2.82
+	Percent of CPU this job got: 136%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:05.04
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 18428
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 4870
+	Voluntary context switches: 17350
+	Involuntary context switches: 111
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

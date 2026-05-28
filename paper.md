@@ -2,97 +2,207 @@
 
 ## Abstract
 
-This work studies RDMA-style DSM transaction protocols under hardware-constrained conditions. The environment does not provide real RDMA NICs; therefore, the quantitative results are interpreted as protocol-level and rapid-validation evidence rather than hardware RDMA performance. The project evaluates baseline OCC, backoff OCC, hot-object detection, static hybrid arbitration, scalable arbitration queues, and planned adaptive routing. The central finding is not absolute RDMA speed, but when and why arbitration is useful for hot-object contention and where its queueing costs become visible.
+This project studies how an RDMA-style DSM transaction runtime should route transactions under changing hot-object contention when only constrained software-RDMA prototyping is available. The environment is virtualized Linux + Ubuntu 22.04 + Soft-RoCE/`rdma_rxe`; there is no hardware RDMA NIC. Therefore, all measurements are interpreted as transport diagnostics, protocol-level evidence, or prototype-relative comparisons, not as hardware RDMA latency or throughput.
+
+The work is organized as a staged evidence chain. Phase 1 validates two-VM Soft-RoCE verbs functionality and establishes the trust boundary. Phase 2 builds a local RDMA-style DSM/OCC protocol benchmark. Phase 3 studies contention behavior, backoff, hot detection, and static hybrid arbitration. Phase 4 adds scalable arbitration queues and cleanup experiments for shared application metadata. Phase 5 adds transaction latency sampling and an adaptive-routing prototype. Project-level two-node RDMA wrapper validation and two-node DSM transactions over verbs are left as explicit future Phase 6 and Phase 7 work.
 
 ## 1. Introduction
 
-Real RDMA DSM systems depend on RNICs, PCIe, switches, and hardware offload. This project lacks that hardware and therefore uses local protocol simulation plus Soft-RoCE validation to develop and test ideas quickly. The constrained research question is: how should an RDMA-style DSM transaction runtime react to hot-object contention?
+RDMA-based DSM systems often rely on one-sided READ/WRITE/atomic operations to reduce remote CPU involvement, but real deployments also depend on RNICs, PCIe, switches, congestion-control behavior, memory registration, and careful transport setup. This project does not have that hardware. The research question is therefore deliberately constrained:
 
-The paper makes no claims about absolute hardware RDMA latency, throughput, RNIC offload, PCIe behavior, switch behavior, congestion control, or bare-metal cluster scalability. Instead, it contributes a staged methodology: local protocol prototype, contention analysis, scalable arbitration design, prototype-relative latency/queue measurement, adaptive-routing design, and separate two-node Soft-RoCE transport validation.
+```text
+How should an RDMA-style DSM transaction runtime route transactions under changing hot-object contention when only constrained software-RDMA prototyping is available?
+```
+
+The contribution is not an absolute hardware RDMA speedup claim. The contribution is a staged methodology and prototype for studying contention-control behavior under a clearly bounded environment:
+
+- Two-VM Soft-RoCE trust-boundary characterization.
+- RDMA-style DSM/OCC local protocol prototype.
+- OCC, backoff, hot-detection, and static-arbitration contention analysis.
+- Per-object and per-shard arbitration queues.
+- Latency sampler with bounded reservoir mode and debug-only full sampling.
+- Adaptive routing prototype and calibration plan.
+- Explicit future plan for project-level two-node RDMA wrapper and DSM transaction validation.
 
 ## 2. Background and Motivation
 
-DSM provides a shared-memory abstraction over distributed memory. RDMA-style DSM designs often use one-sided reads, writes, and atomics to reduce remote CPU involvement. OCC fits this model because transactions can optimistically read object versions, buffer writes, validate read sets, acquire locks or CAS-style ownership, write committed values, and release locks.
+DSM provides a shared-memory abstraction over distributed memory. RDMA-style DSM designs can map reads, writes, and lock acquisition onto one-sided verbs or atomics. OCC is a natural match: transactions optimistically read object versions, buffer writes, validate read sets, acquire locks or CAS-style ownership, update values, and release locks.
 
-OCC performs well under low contention because most transactions validate successfully. Under hot-object contention, many transactions repeatedly fail lock acquisition or read-set validation. Backoff can reduce synchronized retry storms, but it does not remove the underlying conflict. Arbitration can eliminate hot-object retry storms by serializing contested updates, but it introduces queue wait, centralization, and possible head-of-line blocking.
+OCC works well under low contention because most transactions validate successfully. Under hot-object contention, transactions repeatedly fail lock acquisition or read-set validation. Backoff reduces synchronized retry storms but does not remove the underlying conflict. Arbitration serializes contested hot updates and can eliminate retry storms, but it introduces queueing, centralization, and potential head-of-line blocking.
 
-## 3. Environment Constraints and Methodology
+The central systems question is when a runtime should stay optimistic and when it should route work through arbitration.
 
-The experiments run in a constrained virtualized Linux + Ubuntu 22.04 + Soft-RoCE/`rdma_rxe` environment. The local protocol benchmark is not equivalent to a two-node hardware RDMA deployment. Soft-RoCE transport validation is reported separately from protocol-level DSM/OCC results. Absolute latency and throughput are not hardware claims.
+## 3. Environment and Methodology Boundaries
 
-## 4. Phase 1: RDMA-style DSM Prototype
+The experimental environment is virtualized Linux + Ubuntu 22.04 + Soft-RoCE/`rdma_rxe`. The project has no hardware RDMA NIC. As a result, the paper forbids claims about hardware RDMA performance, RNIC offload, PCIe behavior, switch behavior, RoCE congestion-control behavior, bare-metal cluster scalability, production-ready DSM behavior, crash recovery, or durability.
 
-Phase 1 implemented the basic DSM/OCC substrate: versioned objects, lock bits, RDMA-style read/write/CAS abstraction, and an OCC transaction path. Its purpose was to establish a controllable baseline for transaction mechanics and correctness. The result supports functional feasibility of the protocol mechanics and enables later contention experiments.
+Evidence is separated by purpose:
 
-## 5. Phase 2: Contention Behavior and Hybrid Arbitration
+| Evidence type | Purpose | Not for |
+|---|---|---|
+| Two-VM Soft-RoCE verbs validation | Transport functionality and diagnostic sanity: RC path, QP/GID/CQ metadata, READ/WRITE/SEND perftest behavior | Hardware RDMA performance, RNIC offload, DSM transaction throughput |
+| Local DSM/OCC protocol benchmark | Algorithm behavior and contention-control comparison under identical prototype conditions | Distributed DSM-over-verbs throughput |
+| Latency and adaptive-routing prototype | Prototype-relative comparison of routing, queueing, retries, and tail latency | Hardware RDMA p99 latency |
 
-Phase 2 implemented `baseline_occ`, `backoff_occ`, `hot_detection_occ`, and `hybrid_arbitration_occ`. The evaluation showed that hot-object contention manifests as lock failures, validation failures, retries, and lower committed throughput. Hybrid arbitration helps when hot routing is accurate and contention is high; backoff can be sufficient under moderate or read-heavy workloads. Mixed aggregate averages are not treated as universal rankings.
+The local DSM/OCC prototype uses RDMA-style one-sided READ/WRITE/CAS abstractions for protocol development, but it is not a complete two-node verbs execution path. The two-VM Soft-RoCE validation includes one-sided operations such as RDMA READ and RDMA WRITE and message-style operations such as SEND latency tests. Therefore, the whole project should not be described as purely one-sided. The current project does not yet implement project-level two-node DSM transactions over RDMA verbs, and it does not yet include project-level remote atomic/CAS validation.
 
-The most reliable Phase 2 signal is the combination of committed tx/sec, retry per commit, lock/validation failures, hot-path ratio, and correctness counters.
+## 4. Phase 1: Two-VM Soft-RoCE Feasibility and Trust Boundary
 
-## 6. Phase 3: Soft-RoCE Transport Validation and Its Limits
+Phase 1 uses two VMs:
 
-Phase 3 validates two-node Soft-RoCE verbs functionality between node2 and node1 using external verbs tools, including `ibv_rc_pingpong`, RDMA WRITE/READ bandwidth, and RDMA WRITE/READ/SEND latency sweeps. It confirms that RC QP setup, GID exchange, CQ completion, and transport-level operations work across two Linux VMs. It does not support hardware RDMA performance claims or stable latency claims.
+- Client: `node2`, `192.168.56.102`, `rxe0`
+- Server: `node1`, `192.168.56.101`, `rxe0`
 
-High latency jitter in the virtualized Soft-RoCE/`rdma_rxe` environment justifies keeping transport validation separate from protocol evaluation.
+The evidence comes from the existing directories whose historical names include `phase3` and `phase3a`, especially `results/phase3_soft_roce_validation/` and `results/phase3/two_node_soft_roce_*`. In the final narrative, these artifacts are interpreted as Phase 1 evidence because the transport feasibility work came before the later local protocol experiments.
 
-Project-level `two_node_rdma_validation` is deferred because the current wrapper would require non-trivial RDMA CM, memory-region exchange, and CQ validation work. This is recorded as future work and should not block latency sampling or adaptive-routing research.
+The validation uses external verbs tools:
 
-## 7. Phase 4: Scalable Arbitration Queues
+- `ibv_rc_pingpong`
+- `ib_read_bw`
+- `ib_write_bw`
+- `ib_read_lat`
+- `ib_write_lat`
+- `ib_send_lat`
 
-Phase 4 adds arbitration modes behind `--arbitration-mode=global|per_object|per_shard` and `--hot-shards=1|2|4|8|16|32`. Global arbitration preserves the old coarse behavior. Per-object arbitration serializes by hot product. Per-shard arbitration maps hot products onto a bounded number of shard queues.
+These tools validate that the RC path works across the two VMs, QP/GID/CQ/transport-level behavior is observable, Soft-RoCE verbs functionality works across two VMs, and READ/WRITE/SEND transport diagnostics can be collected.
 
-The implementation now records queue-wait, queue-length, and service-time samples for hot arbitration. The initial short matrix in `results/phase4_arbitration/` is a smoke/discovery dataset only; publication claims require longer duration and repetitions.
+They do not validate hardware RDMA NIC performance, RNIC offload, PCIe/switch/congestion-control behavior, project-level DSM transaction throughput, or project-level remote CAS correctness.
 
-The intended evaluation questions are whether global arbitration over-serializes unrelated hot objects, whether per-object/per-shard modes reduce queue wait under broad hot sets, where shard-count improvements saturate, and whether arbitration hurts low-contention or read-heavy workloads.
+Soft-RoCE is usable for verbs functionality validation and diagnostic transport sanity checks, but not for hardware performance claims. Because virtualized Soft-RoCE/`rdma_rxe` latency jitter is high, later phases use local DSM/OCC protocol benchmarks for algorithm development and prototype-relative comparison.
 
-During Phase 4 sanity checking, the initial queue-based arbitration prototype exposed an important synchronization issue: hot arbitration and cold OCC initially used inconsistent data-locking disciplines. The hot path used object-specific locks, while parts of the OCC path still relied on the old global mutation mutex. The implementation was fixed so both OCC and arbitration acquire object-specific data locks in deterministic object-id order. This makes hot/cold path comparisons meaningful and avoids path-specific synchronization artifacts.
+## 5. Phase 2: RDMA-style DSM/OCC Local Protocol Prototype
 
-## 7.1 Phase 4b: Cleanup and Isolation Validation
+Phase 2 implements the local RDMA-style DSM/OCC substrate. It includes versioned objects, lock bits, object-specific data locks, RDMA-style READ/WRITE/CAS abstractions, read and write sets, validation, commit, retry, and abort logic.
 
-Phase 4b is a cleanup/isolation validation step, not a new performance claim. It adds `--sold-counter-mode=global|per_product`. The global mode preserves the original shared `sold_count` object and represents an application-level global metadata bottleneck. The per-product mode uses one sold counter per product so that broad hot-product workloads can better isolate arbitration queue behavior.
+This phase intentionally uses a local RDMA-style protocol benchmark rather than two-node DSM-over-verbs, because Phase 1 established that Soft-RoCE is useful for verbs functionality validation but not for absolute RDMA performance claims.
 
-This distinction matters because per-object or per-shard arbitration can only reduce unrelated-object serialization when the application data model does not reintroduce a shared object in every transaction. The final paper should discuss this as a systems lesson rather than presenting the short Phase 4b discovery rows as final performance evidence.
+The purpose of Phase 2 is to create a controllable platform for later contention-control experiments. It is not an end-to-end distributed DSM benchmark.
+
+## 6. Phase 3: Contention Behavior and Static Hybrid Arbitration
+
+Phase 3 evaluates:
+
+- `baseline_occ`
+- `backoff_occ`
+- hot detection as monitoring
+- static hybrid arbitration
+
+Hot-object contention appears through lock failures, validation failures, retries, and lower committed throughput. Backoff can reduce retry synchronization. Hot detection identifies contested objects. Static hybrid arbitration routes known-hot transactions through a serialized hot path while leaving cold transactions on OCC.
+
+Aggregate averages are not universal rankings because they mix low-contention, high-contention, read-heavy, write-heavy, uniform, and skewed workloads. The useful signals are per-workload committed throughput, abort and retry behavior, lock/validation failures, hot-path ratio, correctness counters, and later latency percentiles.
+
+This phase motivated Phase 4 scalable queues and Phase 5 tail-latency sampling because static arbitration can remove retry storms while creating queue wait.
+
+## 7. Phase 4: Scalable Arbitration Queues and Cleanup
+
+Phase 4 adds arbitration modes:
+
+- `--arbitration-mode=global`
+- `--arbitration-mode=per_object`
+- `--arbitration-mode=per_shard`
+- `--hot-shards=1|2|4|8|16|32`
+
+It also records queue wait, queue length, and service time percentiles. The goal is to determine whether global arbitration over-serializes unrelated hot objects, and whether per-object or per-shard arbitration reduces unnecessary queueing for broad hot sets.
+
+Phase 4 sanity checking found a hot/cold locking-discipline bug. The initial hot path used object-specific locks, while parts of the OCC cold path still used the old global mutation mutex. The implementation was fixed by using deterministic object-id lock ordering and object-specific data locks in both paths. This fix is important because otherwise hot/cold comparisons could reflect inconsistent synchronization rather than algorithm behavior.
+
+Phase 4b adds `--sold-counter-mode=global|per_product`.
+
+- `global` sold counter preserves the application-level shared metadata bottleneck.
+- `per_product` sold counters isolate arbitration queue behavior by removing one shared metadata object from every transaction.
+
+Phase 4b is cleanup/isolation validation, not a final performance claim. It demonstrates that per-object or per-shard arbitration only helps when the application data model does not force every transaction through another shared object.
 
 ## 8. Phase 5: Latency Sampling and Adaptive Routing
 
-Phase 5 adds true transaction latency sampling. Tail latency matters because a design can improve committed throughput while worsening p95 or p99 latency. Hybrid arbitration has exactly this risk: it can remove retry storms while introducing queue wait.
+Phase 5 adds true transaction latency sampling. Latency is prototype-relative evidence only, not hardware RDMA latency.
 
-Latency should be treated as prototype-relative evidence, not hardware RDMA latency. It is still useful when comparing global queues, per-object queues, per-shard queues, static arbitration, and adaptive routing under identical experimental conditions.
+The benchmark supports:
 
-The benchmark now supports `--latency-sampling=off|full|reservoir`, `--latency-sample-size`, and `--latency-output`. Run summaries report transaction latency percentiles, committed transaction latency percentiles, abort latency percentiles, path-specific cold/hot percentiles, retry-count percentiles, and sample counts. Aborted transactions are not mixed into committed latency percentiles. The default reservoir sample size is 10,000 rather than 100,000 to reduce instrumentation overhead and OOM risk in the VM environment.
+- `--latency-sampling=off|full|reservoir`
+- `--latency-sample-size`
+- `--latency-output`
+- `--allow-dangerous-full-sampling`
 
-The first overhead smoke check uses 1-second, 2-thread runs for `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. It shows that full sampling is not suitable for long runs because it stores every transaction sample and can consume hundreds of MB within one second. Full sampling is now debug-only and guarded for short runs unless explicitly overridden. Reservoir sampling is bounded and remains the only acceptable mode for final latency analysis, but it still introduces measurable overhead and must be reported with any latency result.
+The default sample size is 10,000. Full sampling is debug-only and guarded: it is rejected when `duration_sec > 2` or `threads > 2` unless explicitly overridden. Reservoir sampling is the only acceptable mode for final latency analysis. Run summaries separate all-transaction latency, committed-only latency, aborted transaction latency, cold OCC latency, hot arbitration latency, retry percentiles, and sample count. Aborted transactions are not mixed into committed latency percentiles.
 
-Adaptive routing should compare estimated OCC retry cost against estimated arbitration queue cost:
+Phase 5 also adds a minimal `hybrid_adaptive_arbitration_occ` prototype. The routing rule compares estimated OCC retry cost with estimated arbitration queue cost:
 
 ```text
 estimated_occ_cost_us = base_occ_latency_us + expected_retries * retry_penalty_us
 estimated_arbitration_cost_us = queue_wait_estimate_us + service_time_estimate_us
 ```
 
-Transactions should enter arbitration only when the estimated OCC cost exceeds arbitration cost by a routing margin. The checked-in prototype now includes `hybrid_adaptive_arbitration_occ` with decision counters, estimated cost percentiles, routing-decision latency, and oscillation tracking.
+A transaction should enter arbitration only when estimated OCC cost exceeds arbitration cost by the routing margin. Current adaptive-routing evidence is smoke-level and calibration-level unless final matrix results are explicitly generated. The scripted phase-change approximation restarts benchmark processes between phases; it is useful as a low-risk approximation but not as evidence of continuous in-process adaptive state transitions.
 
-The current adaptive-routing evidence is smoke-level only. The three-row smoke summary verifies that the prototype runs without invariant violations or duplicate commits, but it does not support a claim that adaptive routing improves throughput or p99 latency. A scripted phase-change approximation is available as consecutive controlled runs; it must not be described as continuous in-process adaptation.
+## 9. Final Evaluation
 
-## 9. Evaluation
+### 9.1 Correctness
 
-The final evaluation should include correctness invariants, focused synthetic contention workloads, application-like workloads, arbitration queue comparison, adaptive routing under steady workloads, adaptive routing under phase-change workloads, two-node Soft-RoCE validation, and statistical reporting.
+Every final result must report invariant violations and duplicate commits. A row is correctness-clean only when both are zero. Correctness-clean short runs can validate plumbing, but they are not automatically publication-grade performance evidence.
 
-Focused synthetic workloads and application-like workloads should be reported in separate sections or figures. Do not use a combined universal ranking table across unrelated workload families.
+### 9.2 Adaptive Routing Calibration
 
-For final benchmark configurations, report mean, standard deviation, 95% confidence interval, repetition count, warmup duration, and measurement duration. Do not rank algorithms from one short run.
+Calibration uses a small matrix over `routing_margin_us=5,10,20` and `cost_window_ms=100,250,500` on `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. The current calibration rows are correctness-clean and select `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, and `hot_shards=8`.
+
+The calibration also exposes a limitation: this minimal adaptive prototype is conservative. It keeps low-contention arbitration near zero, but hot-workload arbitration is a small nonzero fraction concentrated around cold-start/insufficient-sample behavior. This supports using the policy for a final focused comparison, but it does not by itself prove adaptive routing improves throughput or p99 latency.
+
+### 9.3 Focused Synthetic Workloads
+
+Synthetic workloads should be reported separately:
+
+- `low_uniform_read95`
+- `mixed_uniform_write20`
+- `mixed_hot4_write50`
+- `high_hot1_write100`
+- `high_hot16_write100`
+- `zipf99_write100`
+
+### 9.4 Application-like Workloads
+
+Application-like workloads should be reported in a separate section:
+
+- `flash_sale_spike`
+- `ticket_booking_hot_event`
+- `ad_budget_read_heavy_dashboard`
+- `long_tail_marketplace_zipf`
+
+Do not combine synthetic and application-like workloads into one universal ranking table.
+
+### 9.5 Sold Counter Bottleneck Study
+
+The controlled sold-counter comparison should compare `global` and `per_product` only for selected hot workloads. The interpretation is a data-model lesson: shared metadata can reintroduce serialization even when the arbitration queue itself is per-object or per-shard.
+
+### 9.6 Phase-change Approximation
+
+The current phase-change script is a multi-process scripted approximation. It does not prove continuous in-process adaptive reaction. The formal short approximation uses the selected calibration default and remains correctness-clean, but it should be interpreted only as a low-risk approximation of phase changes across separate benchmark processes.
+
+### 9.7 Latency Sampling Overhead
+
+Latency overhead must be disclosed with any latency result. Full sampling is not acceptable for final runs. Reservoir sampling keeps memory bounded but still introduces measurable overhead in the VM environment.
 
 ## 10. Discussion
 
-OCC is enough under low contention. Backoff is often enough when conflicts are moderate and retry timing is the primary issue. Static arbitration helps when hot objects are clear and stable. Adaptive routing is the next mechanism to evaluate when workload phases change or when static hot detection sends too much traffic through queues.
-
-Soft-RoCE, `rdma_rxe`, and virtualization limit performance claims, but they do not invalidate prototype-relative protocol comparisons when the boundary is stated clearly.
+OCC is appropriate when contention is low. Backoff is useful when conflicts are moderate and timing-related. Static arbitration helps when hot objects are stable and routing is accurate. Per-object and per-shard arbitration reduce artificial over-serialization compared with global arbitration only when the application data model does not add another shared bottleneck. Adaptive routing is promising only if calibration and final matrix data show that it avoids unnecessary arbitration and p99 regression.
 
 ## 11. Limitations
 
-The project has no hardware RNIC, no bare-metal cluster, no production durability, no crash recovery, and high Soft-RoCE latency jitter. Local protocol results and transport validation results are separated. Additional protocols such as queued locks, timestamp ordering, wound-wait, and deterministic scheduling should remain appendix-only unless implemented and evaluated rigorously.
+The project has no hardware RDMA NIC, no bare-metal cluster, no RNIC offload measurements, no PCIe or switch measurements, no production durability, and no crash recovery. The local DSM/OCC benchmark is not a two-node verbs DSM transaction benchmark. The Phase 1 transport validation does not include project-level remote atomic/CAS correctness. Short smoke/discovery rows are useful for debugging and sanity checks but not final performance claims.
 
-## 12. Conclusion
+## 12. Future Work
 
-The project demonstrates a staged way to study RDMA-style DSM transaction behavior without RDMA hardware. The main finding is about contention-aware routing, not hardware RDMA speed. Per-object/per-shard arbitration and future adaptive routing make the hybrid approach more defensible than coarse global serialization. Two-node Soft-RoCE validation closes the transport-functionality gap without changing the hardware-performance limitation.
+### 12.1 Phase 6: Project-level Two-node RDMA Wrapper Validation
+
+Future Phase 6 should validate the project RDMA wrapper across two VMs before attempting DSM transactions. It should implement and measure RDMA connection setup, PD/CQ/QP setup, memory-region registration, remote address/rkey exchange, RDMA WRITE validation, RDMA READ validation, RDMA CAS validation, CQ completion validation, error handling, and timeout behavior.
+
+Future tests should include WRITE 8B/64B/4KB, READ 8B/64B/4KB, and CAS 8B. The allowed claim would be only that the project RDMA wrapper can execute READ/WRITE/CAS over two-node Soft-RoCE. It would still not justify hardware RDMA performance, DSM transaction throughput, RNIC offload, or real RDMA p99 latency claims.
+
+### 12.2 Phase 7: Two-node DSM Transaction over RDMA Verbs
+
+Future Phase 7 should begin only after Phase 6 succeeds. The minimal future transaction should perform a single-object DSM/OCC path: RDMA READ object/version, RDMA CAS lock, RDMA WRITE update, RDMA WRITE unlock/version, and final value/version verification.
+
+Future expansion can include two-object transactions, read-only transactions, write-heavy transactions, multi-client conflict tests, and simple OCC validation. The allowed claim would be only that a minimal DSM/OCC transaction path can run over two-node Soft-RoCE. It would still not imply hardware RDMA performance, production DSM, cluster scalability, or durability.
+
+## 13. Conclusion
+
+This project demonstrates a bounded way to study contention-aware transaction routing for RDMA-style DSM without RDMA hardware. Phase 1 establishes Soft-RoCE verbs feasibility and its trust boundary. Later phases use local protocol benchmarks to study OCC, backoff, static arbitration, scalable queues, latency sampling, and adaptive routing. The final contribution is a careful protocol-level evaluation path, not a hardware RDMA performance claim.

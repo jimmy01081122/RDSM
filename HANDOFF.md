@@ -31,11 +31,30 @@ Last updated: 2026-05-28 UTC
 - Treat all results as virtualized Linux + Ubuntu 22.04 + Soft-RoCE/`rdma_rxe` plus local RDMA-style DSM protocol evidence.
 - Do not describe these numbers as hardware RDMA NIC performance.
 - Do not extrapolate absolute latency, throughput, CPU, abort ratio, or queue wait to real RNICs.
+- Final phase numbering is:
+  - Phase 1: Two-VM Soft-RoCE Feasibility and Trust Boundary.
+  - Phase 2: RDMA-style DSM/OCC Local Protocol Prototype.
+  - Phase 3: Contention Behavior and Static Hybrid Arbitration.
+  - Phase 4: Scalable Arbitration Queues and Cleanup.
+  - Phase 5: Latency Sampling and Adaptive Routing.
+  - Future Phase 6: Project-level Two-node RDMA Wrapper Validation.
+  - Future Phase 7: Two-node DSM Transaction over RDMA Verbs.
+- Phase 1 is the old Phase 3/3a Soft-RoCE validation evidence. Old directory names are retained for reproducibility, but final writing treats them as Phase 1 evidence.
+- Phase 2/3/4/5 are local protocol benchmarks unless explicitly stated otherwise.
 - Phase 2 is still a local RDMA-style DSM/OCC protocol benchmark, not an end-to-end two-node DSM-over-verbs benchmark.
-- Phase 3 validates two-node Soft-RoCE verbs transport only. It proves the node2 -> node1 RC path works, but it does not measure distributed DSM transaction throughput.
+- Phase 1 validates two-node Soft-RoCE verbs transport only. It proves the node2 -> node1 RC path works, but it does not measure distributed DSM transaction throughput.
 - Phase 5 transaction latency sampling is prototype-relative. It is useful for comparing algorithms under identical local conditions, but it is not hardware RDMA latency evidence.
 - Full transaction sampling grows with transaction count and can exhaust memory quickly. It is debug-only and guarded; use reservoir sampling for latency analysis.
 - Do not run final matrix with `--latency-sampling=full`.
+- Current absence: no project-level two-node DSM-over-verbs path.
+- Current absence: no project-level remote CAS validation.
+
+## One-sided / Two-sided Clarification
+
+- The local DSM/OCC prototype uses RDMA-style one-sided READ/WRITE/CAS abstractions for protocol development, but it is not a complete two-node verbs execution path.
+- The two-VM Soft-RoCE validation includes one-sided RDMA READ/WRITE tools and message-style SEND latency tests.
+- Do not describe the entire project as purely one-sided.
+- Project-level two-node DSM transactions over RDMA verbs and project-level remote atomic/CAS validation remain future work.
 
 ## What Was Implemented
 
@@ -63,6 +82,7 @@ Last updated: 2026-05-28 UTC
 - Phase 5 adaptive routing CLI: `--adaptive-routing on|off`, `--routing-margin-us`, `--cost-window-ms`, `--min-samples-before-adapt`, `--adaptive-object-scope global|shard|object`
 - Phase 5 phase-change approximation script: `scripts/run_phase5_phase_change_approx.sh`
 - Full Chinese report rewritten in `report.md`
+- Research plan checklist: `PROJECT_PLAN_STATUS.md`
 
 ## Rebuild
 
@@ -224,8 +244,13 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Phase 5 latency overhead scope: 1-second, 2-thread smoke only; not final performance evidence
 - Phase 5 latency default sample size: 10,000; smoke sample size: 5,000 or lower
 - Phase 5 adaptive routing smoke rows: 3
-- Phase 5 scripted phase-change approximation smoke rows: 9
-- Phase 5 adaptive routing status: design/prototype/smoke only; no final performance claim
+- Phase 5 adaptive calibration rows: 54
+- Phase 5 adaptive calibration correctness: PASS; invariant violations 0, duplicate commits 0
+- Selected adaptive default: `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, `hot_shards=8`
+- Phase 5 scripted phase-change approximation rows: 18
+- Phase 5 scripted phase-change approximation correctness: PASS; invariant violations 0, duplicate commits 0
+- Phase 5 adaptive routing status: calibrated prototype only; no final performance claim until reduced final matrix is run
+- Final focused matrix: not completed in the current checked-in artifacts.
 
 ## Interpretation Notes
 
@@ -255,6 +280,87 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.
 
+## Future Phase 6: Project-level Two-node RDMA Wrapper Validation
+
+Purpose: validate the project's own RDMA wrapper across two VMs before attempting DSM transactions.
+
+Required future capabilities:
+
+```text
+RDMA connection setup
+Protection Domain / CQ / QP setup
+Memory Region registration
+remote address / rkey exchange
+RDMA WRITE validation
+RDMA READ validation
+RDMA CAS validation
+CQ completion validation
+error handling and timeout
+```
+
+Future outputs:
+
+```text
+results/phase6_two_node_wrapper_validation/summary.md
+results/phase6_two_node_wrapper_validation/summary.csv
+results/phase6_two_node_wrapper_validation/run_metadata.json
+```
+
+Allowed future claim: the project RDMA wrapper can execute READ/WRITE/CAS over two-node Soft-RoCE. Still forbidden: hardware RDMA performance, DSM transaction throughput, RNIC offload, and real RDMA p99 latency.
+
+## Future Phase 7: Two-node DSM Transaction over RDMA Verbs
+
+Prerequisite: Future Phase 6 must succeed first.
+
+Minimal future transaction:
+
+```text
+single-object transaction
+RDMA READ object/version
+RDMA CAS lock
+RDMA WRITE update
+RDMA WRITE unlock/version
+verify final value/version
+```
+
+Future outputs:
+
+```text
+results/phase7_two_node_dsm_transaction/summary.md
+results/phase7_two_node_dsm_transaction/summary.csv
+results/phase7_two_node_dsm_transaction/correctness_report.md
+```
+
+Allowed future claim: a minimal DSM/OCC transaction path can run over two-node Soft-RoCE. Still forbidden: hardware RDMA performance, production DSM, cluster scalability, and durability.
+
+## Remaining Current-cycle Commands
+
+Adaptive calibration target and completed command:
+
+```bash
+DURATION_SEC=5 REPETITIONS=2 LATENCY_SAMPLE_SIZE=10000 \
+  ./scripts/run_phase5_adaptive_calibration.sh
+```
+
+Phase-change approximation:
+
+```bash
+RESULTS_DIR=./results/phase5_adaptive_routing/phase_change_approx \
+  DURATION_SEC=5 REPETITIONS=2 LATENCY_SAMPLE_SIZE=10000 \
+  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 HOT_SHARDS=8 \
+  ./scripts/run_phase5_phase_change_approx.sh
+```
+
+Reduced final matrix target:
+
+```bash
+DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
+  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
+  ./scripts/run_final_focused_matrix.sh
+```
+
+Do not run the reduced final matrix with full latency sampling.
+
 ## Version Control Routine
 
 ```bash
@@ -267,9 +373,10 @@ git push origin HEAD
 
 ## Next Research Steps
 
-1. Calibrate adaptive routing parameters with a small matrix after smoke review.
-2. Replace scripted phase-change approximation with native in-process phase changes if continuous adaptation is required.
-3. Convert the DSM/OCC benchmark into an end-to-end two-node verbs transport benchmark.
-4. Run the final focused matrix only after confirming duration/repetitions/thread scope.
-5. Add remote atomic/CAS transport validation if the final DSM protocol depends on atomics.
-6. Increase run duration and repetitions before publication-style claims.
+1. Calibrate adaptive routing parameters with the small codex5 matrix.
+2. Select one adaptive default and record the rationale in `paper.md`, `HANDOFF.md`, and `PROJECT_PLAN_STATUS.md`.
+3. Run the formal short phase-change approximation and keep its multi-process limitation explicit.
+4. Run the reduced final focused matrix only after confirming runtime budget.
+5. Run the controlled global-vs-per-product sold counter comparison.
+6. Treat project-level two-node RDMA wrapper validation as Future Phase 6, not current-cycle work.
+7. Treat two-node DSM transaction over RDMA verbs as Future Phase 7, not current-cycle work.

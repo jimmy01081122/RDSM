@@ -1,0 +1,19 @@
+{
+  "run_id": "010_phase_change_hot1_to_hot16_phase2_high_hot16_write100_rep2",
+  "timestamp": "2026-05-28T11:55:14Z",
+  "algorithm": "hybrid_adaptive_arbitration_occ",
+  "workload": "high_hot16_write100",
+  "thread_count": 2,
+  "duration_sec": 5,
+  "matrix": "phase5_phase_change_script_approx",
+  "scenario": "phase_change_hot1_to_hot16",
+  "phase_index": 2,
+  "repetition": 2,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "hot_shards": 8,
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Scripted multi-process phase-change approximation; not in-process continuous adaptation evidence."
+}

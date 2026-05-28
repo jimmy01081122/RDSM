@@ -1,117 +1,99 @@
-# RDSM: RDMA-based Distributed Shared Memory
+# RDSM: Contention-aware Transaction Routing for RDMA-style DSM
 
-A high-performance distributed shared memory system with Optimistic Concurrency Control (OCC) and RDMA support.
+This repository studies contention-aware transaction routing for an RDMA-style DSM prototype under constrained software-RDMA prototyping.
 
-## Project Overview
+## Claim Boundary
 
-This project implements a Phase 2 DSM (Distributed Shared Memory) benchmark system with multiple OCC algorithms:
-- **baseline_occ**: Standard Optimistic Concurrency Control
-- **backoff_occ**: OCC with backoff strategies (NO_BACKOFF, FIXED_BACKOFF, EXPONENTIAL_BACKOFF, CONTENTION_AWARE_BACKOFF)
-- **hot_detection_occ**: OCC with hot data detection
-- **hybrid_arbitration_occ**: Server-based arbitration hybrid approach
+The environment is virtualized Linux + Ubuntu 22.04 + Soft-RoCE/`rdma_rxe`; no hardware RDMA NIC is available. Results in this repository are transport diagnostics, local protocol evidence, or prototype-relative comparisons. They must not be described as hardware RDMA latency/throughput, RNIC offload, PCIe/switch behavior, bare-metal scalability, project-level two-node DSM-over-verbs throughput, or project-level remote CAS correctness.
 
-## Requirements
+## Phase Structure
 
-- CMake 3.10+
-- C++17 compiler (g++ 11+)
-- RDMA libraries:
-  - libibverbs (1.14+)
-  - librdmacm (1.3+)
-- Threads library
-- Python 3 (for result parsing)
+- Stage 0: preliminary prototype and problem origin from `prev_project/`.
+- Phase 1: two-VM Soft-RoCE verbs feasibility and trust boundary.
+- Phase 2: local RDMA-style DSM/OCC protocol prototype.
+- Phase 3: contention behavior, backoff, hot detection, and static hybrid arbitration.
+- Phase 4: scalable arbitration queues plus global/per-product sold-counter cleanup.
+- Phase 5: bounded transaction latency sampling and adaptive-routing prototype.
+- Future Phase 6: project-level two-node RDMA wrapper validation.
+- Future Phase 7: two-node DSM transaction over RDMA verbs.
 
-### Install Dependencies (Ubuntu/Debian)
+## Algorithms
 
-```bash
-sudo apt-get install -y cmake build-essential
-sudo apt-get install -y libibverbs-dev librdmacm-dev
-```
+- `baseline_occ`
+- `backoff_occ`
+- `hot_detection_occ`
+- `hybrid_arbitration_occ`
+- `hybrid_static_arbitration_occ_global`
+- `hybrid_static_arbitration_occ_per_object`
+- `hybrid_static_arbitration_occ_per_shard_8`
+- `hybrid_adaptive_arbitration_occ_per_shard_8`
 
-## Building
+The final focused matrix uses the labeled variants above for reporting. The executable exposes them through `--algorithm`, `--arbitration-mode`, `--hot-shards`, and `--adaptive-routing`.
 
-```bash
-cd RDSM
-mkdir build
-cd build
-cmake ..
-make -j4
-```
-
-The compiled executable will be at `build/phase2_dsm_benchmark`.
-
-## Running
-
-### Basic Usage
+## Build
 
 ```bash
-./build/phase2_dsm_benchmark [options]
+cmake -S . -B build
+cmake --build build -j2
 ```
 
-### Common Options
+The main benchmark executable is:
 
-- `--products N`: Number of products (default: 100)
-- `--users N`: Number of users (default: 10)
-- `--threads N`: Number of threads
-- `--write-ratio RATIO`: Write percentage (0.0-1.0)
-- `--access-pattern`: uniform, zipfian_0.8, or zipfian_0.99
-- `--duration-sec N`: Benchmark duration in seconds
-- `--algorithm`: Algorithm to test
-- `--backoff-policy`: Backoff strategy (if applicable)
-- `--output-file FILE`: Output metrics to JSON file
+```bash
+./build/phase2_dsm_benchmark
+```
 
-### Example
+## Useful Commands
+
+Run a short benchmark:
 
 ```bash
 ./build/phase2_dsm_benchmark \
-  --products 1000 \
-  --users 100 \
-  --threads 8 \
-  --write-ratio 0.5 \
-  --access-pattern zipfian_0.8 \
-  --duration-sec 60 \
-  --algorithm hot_detection_occ \
-  --output-file results.json
+  --application-case flash_sale \
+  --workload-name mixed_hot4_write50 \
+  --algorithm hybrid_arbitration_occ \
+  --arbitration-mode per_shard \
+  --hot-shards 8 \
+  --products 64 --users 200 \
+  --hot-products 4 --hot-access-prob 0.85 \
+  --threads 2 --write-ratio 0.5 \
+  --duration-sec 1 \
+  --sold-counter-mode per_product \
+  --latency-sampling reservoir \
+  --latency-sample-size 1000
 ```
 
-## Project Structure
+Parse a result directory:
 
-```
-RDSM/
-├── src/                 # Core implementation
-│   ├── rdma_conn.*     # RDMA connection handling
-│   ├── dsm_object.*    # Distributed shared memory objects
-│   ├── occ_engine.*    # OCC transaction engine
-│   ├── backoff.*       # Backoff strategies
-│   ├── hot_detection.* # Hot data detection
-│   └── server_arbitration.* # Server arbitration logic
-├── include/            # Header files
-│   └── json_utils.h    # JSON output utilities
-├── experiments/        # Benchmark drivers
-├── scripts/            # Utility scripts
-└── stat/               # Historical results and data
+```bash
+RESULTS_DIR=./results/phase2 python3 scripts/parse_phase2_results.py
 ```
 
-## Scripts
+Run the reduced final matrix only when runtime and disk budget are acceptable:
 
-- `scripts/run_phase2_experiments.sh`: Run full experiment suite
-- `scripts/parse_phase2_results.py`: Parse and aggregate results
-- `phase1_final_measure.sh`: Phase 1 calibration measurements
-- `phase1_parse_results.py`: Phase 1 result parsing
+```bash
+DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
+  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
+  ./scripts/run_final_focused_matrix.sh
+```
 
-## Performance Analysis
+Run the controlled sold-counter comparison:
 
-Results are generated in JSON format containing:
-- Transaction throughput
-- Latency metrics
-- Contention-aware performance data
-- Algorithm comparison metrics
+```bash
+./scripts/run_sold_counter_comparison.sh
+```
 
-Use `scripts/parse_phase2_results.py` to aggregate and analyze results.
+## Current Key Artifacts
 
-## License
+- Final paper: `paper.md`
+- Chinese report snapshot: `report.md`
+- Handoff: `HANDOFF.md`
+- Plan/status checklist: `PROJECT_PLAN_STATUS.md`
+- Final matrix: `results/final_focused_matrix/`
+- Sold-counter comparison: `results/final_sold_counter_comparison/`
+- Final convergence summary: `results/final_project_convergence_summary.md`
+- Audit report and patch plan: `results/final_audit_bug_report.md`
 
-Research project - see project documentation for terms.
+## Latency Sampling Note
 
-## Authors
-
-NTU Research Team
+The CLI mode is named `reservoir`, but the current implementation is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Treat p95/p99 values as prototype-relative tail indicators under identical collection policy, not as unbiased estimates of the full latency distribution.

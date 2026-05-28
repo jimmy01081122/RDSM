@@ -1,3 +1,7 @@
+# 注意：本文件不是目前最終版研究報告
+
+目前最完整且最新的研究敘事、Phase 4/4b/5、reduced final focused matrix、sold-counter controlled comparison、Stage 0 舊 prototype 校正解讀，以及最終 claim boundary，請以 [`paper.md`](paper.md) 為準。本 `report.md` 保留為先前中文報告快照，內容主要涵蓋較早的 Phase 2/Phase 3 整理；若要作為最終中文論文，需要依 `paper.md` 重新整合更新。
+
 # RDSM 完整報告：RDMA-style DSM/OCC 協議原型、Hybrid Arbitration 與 Two-Node Soft-RoCE Validation
 
 最後更新：2026-05-27 UTC

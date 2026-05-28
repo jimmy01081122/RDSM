@@ -7,7 +7,8 @@ Last updated: 2026-05-28 UTC
 - Workspace: `/home/node1/RDSM`
 - Remote: `git@github.com:jimmy01081122/RDSM.git`
 - Main executable: `build/phase2_dsm_benchmark`
-- Main report: `report.md` (Chinese full report with Phase 2 + Phase 3)
+- Current final report: `paper.md`
+- Chinese report snapshot: `report.md` (stale Phase 2/3-oriented snapshot; see warning at top of file)
 - Raw results: `results/phase2/`
 - Summary CSV: `results/phase2/summary.csv`
 - Grouped CSV: `results/phase2/summary_by_config.csv`
@@ -23,6 +24,10 @@ Last updated: 2026-05-28 UTC
 - Phase 5 latency sampling smoke summary: `results/phase5_latency_sampling/latency_overhead_summary.md`
 - Phase 5 latency sampling policy: `results/phase5_latency_sampling/latency_sampler_policy.md`
 - Phase 5 adaptive routing design/smoke: `results/phase5_adaptive_routing/`
+- Final focused matrix: `results/final_focused_matrix/`
+- Final sold-counter comparison: `results/final_sold_counter_comparison/`
+- Final convergence summary: `results/final_project_convergence_summary.md`
+- Final audit bug report: `results/final_audit_bug_report.md`
 - Paper skeleton: `paper.md`
 - Final focused matrix plan: `final_focused_matrix_plan.md`
 
@@ -44,10 +49,20 @@ Last updated: 2026-05-28 UTC
 - Phase 2 is still a local RDMA-style DSM/OCC protocol benchmark, not an end-to-end two-node DSM-over-verbs benchmark.
 - Phase 1 validates two-node Soft-RoCE verbs transport only. It proves the node2 -> node1 RC path works, but it does not measure distributed DSM transaction throughput.
 - Phase 5 transaction latency sampling is prototype-relative. It is useful for comparing algorithms under identical local conditions, but it is not hardware RDMA latency evidence.
-- Full transaction sampling grows with transaction count and can exhaust memory quickly. It is debug-only and guarded; use reservoir sampling for latency analysis.
+- Full transaction sampling grows with transaction count and can exhaust memory quickly. It is debug-only and guarded; use the bounded `reservoir` CLI mode for latency analysis.
+- The current `reservoir` implementation is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Treat p95/p99 as prototype-relative tail indicators under the same sampling policy.
 - Do not run final matrix with `--latency-sampling=full`.
 - Current absence: no project-level two-node DSM-over-verbs path.
 - Current absence: no project-level remote CAS validation.
+
+## Pre-Phase: Preliminary Prototype and Problem Origin
+
+- Previous project location: `/home/node1/RDSM/prev_project`
+- Previous documents used: `prev_project/README.md`, `prev_project/docs/FINAL_SUMMARY.md`, `prev_project/docs/PROJECT_REPORT.md`, `prev_project/docs/COMPLETION_REPORT.md`, and `prev_project/docs/ENV.md`.
+- Previous implemented components confirmed from source/docs: FaRM-like DSM prototype, HERD-like key-value store, RDMA verbs wrapper, slab allocator / memory manager, OCC transaction path, performance monitor, OS-level analysis tools, and benchmark executables `farm_benchmark`, `herd_benchmark`, `os_analysis`.
+- Corrected interpretation: old nanosecond RDMA/HERD numbers are historical local prototype observations or local software-path measurements unless measured from `post_send` to CQE completion across a real two-node verbs path. They are not hardware RDMA operation latency.
+- Motivation link: the broad earlier prototype exposed the hot-object contention problem and the limitations of OCC retry storms, then this project narrowed the scope into controlled Soft-RoCE transport validation, local DSM/OCC contention experiments, scalable arbitration queues, bounded latency sampling, and adaptive-routing evaluation.
+- Warning: Do not reuse old Soft-RoCE/WSL2 latency numbers as hardware RDMA evidence. Old numbers are allowed only as historical prototype observations.
 
 ## One-sided / Two-sided Clarification
 
@@ -77,7 +92,7 @@ Last updated: 2026-05-28 UTC
 - Phase 4 metrics: queue wait p50/p95/p99/max, queue length p50/p95/p99, service time p50/p95/p99/max
 - Phase 5 latency sampler: `include/latency_sampler.h`, `src/latency_sampler.cpp`
 - Phase 5 latency CLI: `--latency-sampling off|full|reservoir`, `--latency-sample-size`, `--latency-output`, `--allow-dangerous-full-sampling`
-- Phase 5 latency summary fields: true transaction p50/p95/p99/max, committed-only latency, abort latency, path-specific cold/hot latency, retry percentiles, and sample count
+- Phase 5 latency summary fields: transaction p50/p95/p99/max, committed-only latency, abort latency, path-specific cold/hot latency, retry percentiles, and sample count
 - Phase 5 adaptive routing prototype: `hybrid_adaptive_arbitration_occ`
 - Phase 5 adaptive routing CLI: `--adaptive-routing on|off`, `--routing-margin-us`, `--cost-window-ms`, `--min-samples-before-adapt`, `--adaptive-object-scope global|shard|object`
 - Phase 5 phase-change approximation script: `scripts/run_phase5_phase_change_approx.sh`
@@ -226,15 +241,16 @@ RESULTS_DIR=./results/phase4b_cleanup \
 
 ## Current Dataset
 
-- Total parsed runs: 272
+- Phase 2 parsed data rows: 272 (`results/phase2/summary.csv` has 273 file lines including the header)
 - Focused trade-off runs: 144
 - Application scenario runs: 32
 - Correctness status: PASS
 - Invariant violations: 0
 - Duplicate commits: 0
-- Phase 3 rerun rows: 28
-- Phase 3 successful rows: 28
+- Phase 3 rerun rows: 32
+- Phase 3 successful rerun rows: 32
 - Phase 1 legacy `/stat` rows parsed with Phase 3: 4
+- Phase 3 total parsed data rows: 36 (`results/phase3/two_node_soft_roce_summary.csv` has 37 file lines including the header)
 - Phase 3 transport evidence: RC QP metadata, Ethernet link type, GID index 1, local GID containing `192.168.56.102`, remote GID containing `192.168.56.101`
 - Phase 4 preliminary rows: 40
 - Phase 4 correctness status: PASS after object-locking fix; smoke/discovery rows preserve invariants and duplicate-commit checks
@@ -249,11 +265,15 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Selected adaptive default: `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, `hot_shards=8`
 - Phase 5 scripted phase-change approximation rows: 18
 - Phase 5 scripted phase-change approximation correctness: PASS; invariant violations 0, duplicate commits 0
-- Phase 5 adaptive routing status: calibrated prototype only; no final performance claim until reduced final matrix is run
+- Phase 5 adaptive routing status: calibrated prototype included in the reduced final matrix; performance claims must be based on per-workload final-matrix analysis and remain prototype-relative
 - Reduced final focused matrix rows: 540
 - Reduced final focused matrix correctness: PASS; invariant violations 0, duplicate commits 0
-- Reduced final focused matrix scope: 10-second runs, 3 repetitions, threads 1/2/4, reservoir latency sampling with sample size 10,000
+- Reduced final focused matrix scope: 10-second runs, 3 repetitions, threads 1/2/4, bounded `reservoir` CLI sampling with sample size 10,000
 - Reduced final focused matrix status: completed; this is not a publication-grade full evaluation
+- Final sold-counter comparison rows: 48
+- Final sold-counter comparison correctness: PASS; invariant violations 0, duplicate commits 0
+- Final sold-counter comparison path: `results/final_sold_counter_comparison/`
+- Final sold-counter comparison status: completed; compare `global` vs `per_product` only as a shared-metadata bottleneck study
 
 ## Interpretation Notes
 
@@ -273,13 +293,13 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Current Phase 2 benchmark path is a local RDMA-style DSM/OCC simulation, not a full two-node Soft-RoCE DSM benchmark.
 - Phase 3 validates standalone perftest READ/WRITE/SEND/BW transport, not the project DSM transaction path.
 - No remote atomic/CAS validation row is included in Phase 3 yet.
-- Hybrid arbitration uses a coarse mutation lock; future work should shard by hot object or hot-object group.
+- Hybrid arbitration now supports global, per-object, and per-shard arbitration. Future work can still improve production-grade scheduling, fairness, and recovery semantics.
 - Phase 4 adds queue-level arbitration, but the benchmark is still a local prototype and still has shared application objects such as `sold_count`; do not treat short Phase 4 numbers as final scalability results.
 - The first Phase 4 per-object/per-shard attempt exposed a lock-discipline bug between hot arbitration and OCC cold path. It was fixed by using deterministic per-object data locks in both paths before regenerating the checked-in Phase 4 summaries.
 - `sold_counter_mode=global` intentionally preserves the application-level shared metadata bottleneck. `sold_counter_mode=per_product` is only for arbitration-isolation validation.
 - Full latency sampling is for short smoke/debug runs only. The benchmark rejects full sampling when `duration_sec > 2` or `threads > 2` unless `--allow-dangerous-full-sampling` is passed.
-- Reservoir latency sampling is implemented, but even reservoir mode has measurable overhead and must be disclosed. The default sample size is 10,000.
-- Adaptive routing based on retry cost versus queue cost is implemented as a minimal prototype, but calibration and final evaluation remain future work.
+- The `reservoir` CLI mode is currently implemented as a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Even this bounded mode has measurable overhead and must be disclosed. The default sample size is 10,000.
+- Adaptive routing based on retry cost versus queue cost is implemented as a minimal prototype, calibrated, and included in the reduced final matrix. It is not yet a mature production routing policy.
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.
 
@@ -373,22 +393,28 @@ FINAL_MATRIX_SMOKE=1 RESULTS_DIR=./results/final_focused_matrix_smoke \
 
 Do not run the reduced final matrix with full latency sampling.
 
+Controlled sold-counter comparison:
+
+```bash
+./scripts/run_sold_counter_comparison.sh
+```
+
+This comparison is complete in `results/final_sold_counter_comparison/`.
+
 ## Version Control Routine
 
 ```bash
 git status --short
-git add experiments include scripts src results/phase3 results/phase4_arbitration results/phase4b_cleanup report.md HANDOFF.md paper.md
-git add -f results/phase5_latency_sampling results/phase5_adaptive_routing
-git commit -m "phase5: add adaptive routing smoke"
+git add experiments include scripts src README.md report.md HANDOFF.md paper.md PROJECT_PLAN_STATUS.md docs
+git add -f results/phase5_latency_sampling results/phase5_adaptive_routing results/final_focused_matrix results/final_sold_counter_comparison results/final_project_convergence_summary.md results/final_audit_bug_report.md
+git commit -m "final: consolidate evaluation and audit"
 git push origin HEAD
 ```
 
 ## Next Research Steps
 
-1. Calibrate adaptive routing parameters with the small codex5 matrix.
-2. Select one adaptive default and record the rationale in `paper.md`, `HANDOFF.md`, and `PROJECT_PLAN_STATUS.md`.
-3. Run the formal short phase-change approximation and keep its multi-process limitation explicit.
-4. Run the reduced final focused matrix only after confirming runtime budget.
-5. Run the controlled global-vs-per-product sold counter comparison.
-6. Treat project-level two-node RDMA wrapper validation as Future Phase 6, not current-cycle work.
-7. Treat two-node DSM transaction over RDMA verbs as Future Phase 7, not current-cycle work.
+1. Use `paper.md` as the current final research report and update `report.md` only if a full Chinese final report is required.
+2. Keep the audit bug report visible; apply code fixes only after explicit authorization or `APPLY_CODE_FIXES=1`.
+3. Optionally run extended validation with longer duration/repetitions if requested.
+4. Treat project-level two-node RDMA wrapper validation as Future Phase 6, not current-cycle work.
+5. Treat two-node DSM transaction over RDMA verbs as Future Phase 7, not current-cycle work.

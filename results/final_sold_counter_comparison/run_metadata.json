@@ -1,0 +1,28 @@
+{
+  "duration_sec": 10,
+  "repetitions": 3,
+  "workloads": [
+    "mixed_hot4_write50",
+    "high_hot16_write100"
+  ],
+  "sold_counter_modes": [
+    "global",
+    "per_product"
+  ],
+  "algorithms": [
+    "hybrid_static_arbitration_occ_per_shard_8",
+    "hybrid_adaptive_arbitration_occ_per_shard_8"
+  ],
+  "threads": [
+    2,
+    4
+  ],
+  "latency_sampling_mode_cli": "reservoir",
+  "latency_sampling_implementation_note": "bounded rotating sample, not statistically uniform Algorithm R reservoir sampling",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5.0,
+  "cost_window_ms": 500,
+  "hot_shards": 8,
+  "scope": "controlled shared-metadata bottleneck comparison",
+  "claim_boundary": "prototype-relative local DSM/OCC evidence; not hardware RDMA or two-node DSM-over-verbs throughput"
+}

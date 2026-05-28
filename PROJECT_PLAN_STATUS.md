@@ -24,6 +24,7 @@
 
 | Phase | 研究項目 | 狀態 | 證據 / Artifact | 後續動作 |
 |---|---|---|---|---|
+| Stage 0 | Preliminary prototype and problem origin | 完成 | `prev_project/`、`docs/preliminary_prototype_and_problem_origin.md`、`paper.md`、`HANDOFF.md` | 舊 Soft-RoCE/WSL2 latency 數字只保留為歷史 prototype observation，不作硬體 RDMA 證據。 |
 | Phase 1 | Two-VM Soft-RoCE feasibility and trust boundary | 完成 | `results/phase3_soft_roce_validation/summary.md`、`results/phase3/two_node_soft_roce_summary.csv` | 舊目錄名仍含 `phase3`，論文中需說明 final paper 視為 Phase 1 evidence。 |
 | Phase 1 | `ibv_rc_pingpong` validation | 完成 | `results/phase3/two_node_soft_roce_20260528_phase3a_layer1/` | 無需重跑，除非節點環境改變。 |
 | Phase 1 | `ib_read_bw` validation | 完成 | `results/phase3/two_node_soft_roce_20260528_phase3a_layer1/` | 無需重跑，除非節點環境改變。 |
@@ -39,17 +40,19 @@
 | Phase 4 | Hot/cold locking-discipline bug fix | 完成 | `src/occ_engine.cpp`、`experiments/phase2_dsm_benchmark.cpp`、`paper.md` | 已修正為 deterministic object-id lock ordering。 |
 | Phase 4b | `sold_counter_mode=global|per_product` | 完成 | `results/phase4b_cleanup/phase4b_cleanup_summary.md` | Final controlled comparison 仍需用較長 reduced settings 重跑。 |
 | Phase 4b | Phase 4b artifact verification | 完成 | `results/phase4b_cleanup/verification_summary.md` | 已通過 correctness/metadata/metric checks。 |
-| Phase 5 | Transaction latency sampler | 完成 | `include/latency_sampler.h`、`src/latency_sampler.cpp` | 只用 reservoir 作 final latency analysis。 |
-| Phase 5 | Latency overhead smoke | 部分完成 | `results/phase5_latency_sampling/latency_overhead_summary.md` | 若 final sample size 改變，需重跑 overhead check。 |
+| Phase 5 | Transaction latency sampler | 完成 | `include/latency_sampler.h`、`src/latency_sampler.cpp` | CLI `reservoir` 目前是 bounded rotating sample；不可宣稱 unbiased Algorithm R reservoir sampling。 |
+| Phase 5 | Latency overhead smoke | 完成 | `results/phase5_latency_sampling/latency_overhead_summary.md` | Final sample size 已定為 10000；若之後改變才需重跑 overhead check。 |
 | Phase 5 | Full sampling guard | 完成 | CLI `--allow-dangerous-full-sampling` | Full sampling 僅 debug，不納入 final matrix。 |
-| Phase 5 | Adaptive routing prototype | 部分完成 | `hybrid_adaptive_arbitration_occ`、`results/phase5_adaptive_routing/adaptive_smoke_summary.md` | 尚需 calibration 與 default selection。 |
+| Phase 5 | Adaptive routing prototype | 完成 | `hybrid_adaptive_arbitration_occ`、`results/phase5_adaptive_routing/adaptive_smoke_summary.md` | 已完成 calibration/default selection 並納入 reduced final matrix；效能主張需依 final matrix 分析。 |
 | Phase 5 | Adaptive routing calibration | 完成 | `results/phase5_adaptive_routing/calibration_summary.md`、`.csv` | 54 runs correctness-clean；selected default 為 `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8`。 |
 | Phase 5 | Formal phase-change approximation | 完成 | `results/phase5_adaptive_routing/phase_change_summary.md`、`.csv` | 18 rows correctness-clean；仍只是 multi-process approximation，不是 continuous in-process adaptation。 |
 | Final | Reduced focused final matrix | 完成 | `results/final_focused_matrix/summary.csv`、`summary_by_config.csv`、`final_summary.md`、`statistical_report.md`、`run_metadata.json` | 540 rows correctness-clean；這是 reduced focused final matrix，不是 publication-grade full evaluation。 |
-| Final | Global vs per-product controlled comparison | 待執行 | 目標：final report / dedicated result section | 需用 selected adaptive default 與 static per_shard_8。 |
+| Final | Global vs per-product controlled comparison | 完成 | `results/final_sold_counter_comparison/summary.csv`、`summary_by_config.csv`、`sold_counter_comparison_summary.md`、`run_metadata.json` | 48 rows correctness-clean；只作 shared metadata bottleneck study。 |
 | Final | Statistical report | 完成 | `results/final_focused_matrix/statistical_report.md` | 已含 mean/stddev/95% CI/repetitions/duration/sampling policy。 |
-| Final | Final `paper.md` convergence | 部分完成 | `paper.md` 已補 reduced final matrix 狀態 | 若要完成中文完整報告，仍需把 final matrix 數據整合進 `report.md`。 |
+| Final | Final `paper.md` convergence | 完成 | `paper.md` | 已納入 Stage 0、final matrix trend analysis、sold-counter comparison、claim boundary。 |
+| Final | Chinese `report.md` convergence | 部分完成 | `report.md` | 已加 stale warning；若需要中文最終論文，需依 `paper.md` 重新整合。 |
 | Final | Final `HANDOFF.md` convergence | 完成 | `HANDOFF.md` | 已更新 final matrix rows、correctness 與重現指令。 |
+| Final | Project convergence summary | 完成 | `results/final_project_convergence_summary.md` | 用於確認目前 cycle 收束狀態。 |
 
 ## Future Work Status
 
@@ -62,12 +65,12 @@
 
 | 決策 | 建議 | 狀態 |
 |---|---|---|
-| Adaptive routing default | Calibration 選出 `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8` | 已定，但需在 final matrix 後重新評估是否支持效能主張 |
-| Final latency sample size | 目前建議 `10000` | 待確認 |
+| Adaptive routing default | `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8` | 已定且已用於 reduced final matrix；目前只支持 prototype-relative 分析，不支持 production policy claim |
+| Final latency sample size | `10000` | 已定 |
 | Final matrix duration/repetitions | 已執行 `duration_sec=10`, `repetitions=3` | 已完成 |
 | Main thread counts | `1,2,4` | 已定 |
 | Sold-counter policy | Main arbitration-isolation 使用 `per_product`; `global` 僅作 controlled bottleneck comparison | 已定 |
-| Final report language | 尚未明確；目前 `paper.md` 英文，`report.md` 中文 | 待確認 |
+| Final report language | 目前最終研究報告為英文 `paper.md`；`report.md` 是中文舊快照 | 已定；若要中文最終論文，另行翻整 |
 
 ## Maintenance Rule
 

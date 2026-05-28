@@ -1,0 +1,17 @@
+workload,sold_counter_mode,algorithm,thread_count,runs,committed_tx_per_sec_mean,committed_tx_per_sec_stddev,tx_latency_us_p99_mean,server_queue_wait_us_p99_mean,lock_fail_count_mean,validation_fail_count_mean,invariant_violation_count_sum,duplicate_commit_count_sum
+high_hot16_write100,global,hybrid_adaptive_arbitration_occ_per_shard_8,2,3,178203.56666666668,2387.914237013816,338.0,65.33333333333333,0.0,18136.666666666668,0.0,0.0
+high_hot16_write100,global,hybrid_adaptive_arbitration_occ_per_shard_8,4,3,158060.03333333333,16721.01644049587,621.3333333333334,386.3333333333333,0.0,22379.333333333332,0.0,0.0
+high_hot16_write100,global,hybrid_static_arbitration_occ_per_shard_8,2,3,366415.93333333335,12410.491639872038,119.33333333333333,1.0,0.0,0.0,0.0,0.0
+high_hot16_write100,global,hybrid_static_arbitration_occ_per_shard_8,4,3,421934.9,59328.36561611992,134.0,1.0,0.0,0.0,0.0,0.0
+high_hot16_write100,per_product,hybrid_adaptive_arbitration_occ_per_shard_8,2,3,214107.23333333334,5766.819687083456,158.33333333333334,1.0,0.0,12520.333333333334,0.0,0.0
+high_hot16_write100,per_product,hybrid_adaptive_arbitration_occ_per_shard_8,4,3,187267.73333333334,1276.1250735462165,474.3333333333333,338.6666666666667,0.0,23268.666666666668,0.0,0.0
+high_hot16_write100,per_product,hybrid_static_arbitration_occ_per_shard_8,2,3,513390.13333333336,8852.63064085094,4.666666666666667,1.0,0.0,0.0,0.0,0.0
+high_hot16_write100,per_product,hybrid_static_arbitration_occ_per_shard_8,4,3,466297.63333333336,11612.745002941105,133.66666666666666,42.0,0.0,0.0,0.0,0.0
+mixed_hot4_write50,global,hybrid_adaptive_arbitration_occ_per_shard_8,2,3,282577.43333333335,5230.939013536032,65.66666666666667,108.66666666666667,0.0,14783.0,0.0,0.0
+mixed_hot4_write50,global,hybrid_adaptive_arbitration_occ_per_shard_8,4,3,276879.2,35228.64037172029,24.666666666666668,1012.6666666666666,0.0,18464.666666666668,0.0,0.0
+mixed_hot4_write50,global,hybrid_static_arbitration_occ_per_shard_8,2,3,344135.1666666667,14727.95799638676,36.0,1.0,0.0,1054.6666666666667,0.0,0.0
+mixed_hot4_write50,global,hybrid_static_arbitration_occ_per_shard_8,4,3,437698.36666666664,68840.75676562056,274.0,42.333333333333336,0.0,841.6666666666666,0.0,0.0
+mixed_hot4_write50,per_product,hybrid_adaptive_arbitration_occ_per_shard_8,2,3,311038.2,16390.73449757516,105.0,43.333333333333336,0.0,11506.666666666666,0.0,0.0
+mixed_hot4_write50,per_product,hybrid_adaptive_arbitration_occ_per_shard_8,4,3,246638.13333333333,16067.823634000137,306.3333333333333,374.6666666666667,0.0,21275.666666666668,0.0,0.0
+mixed_hot4_write50,per_product,hybrid_static_arbitration_occ_per_shard_8,2,3,467513.8333333333,18080.293806886366,3.3333333333333335,1.0,0.0,132.33333333333334,0.0,0.0
+mixed_hot4_write50,per_product,hybrid_static_arbitration_occ_per_shard_8,4,3,405027.76666666666,12603.459775923984,93.66666666666667,78.66666666666667,0.0,247.0,0.0,0.0

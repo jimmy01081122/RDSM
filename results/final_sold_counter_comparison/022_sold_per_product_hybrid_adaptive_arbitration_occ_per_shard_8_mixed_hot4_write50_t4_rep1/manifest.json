@@ -1,0 +1,20 @@
+{
+  "run_id": "022_sold_per_product_hybrid_adaptive_arbitration_occ_per_shard_8_mixed_hot4_write50_t4_rep1",
+  "timestamp": "2026-05-28T16:58:11Z",
+  "algorithm": "hybrid_adaptive_arbitration_occ_per_shard_8",
+  "algorithm_label": "hybrid_adaptive_arbitration_occ_per_shard_8",
+  "workload": "mixed_hot4_write50",
+  "thread_count": 4,
+  "duration_sec": 10,
+  "matrix": "final_sold_counter_comparison",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "sold_counter_mode": "per_product",
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "hot_shards": 8,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Controlled sold-counter bottleneck comparison; not a universal algorithm ranking."
+}

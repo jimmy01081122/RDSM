@@ -3,14 +3,15 @@
 
 import csv
 import json
+import os
 import re
 from collections import defaultdict
 from pathlib import Path
 from statistics import mean, median, stdev
 
 
-RESULTS_DIR = Path("./results/phase2")
-REPORT_FILE = Path("./results/phase2/phase2_report.md")
+RESULTS_DIR = Path(os.environ.get("RESULTS_DIR", "./results/phase2"))
+REPORT_FILE = RESULTS_DIR / "phase2_report.md"
 
 
 def load_json(path):
@@ -106,12 +107,16 @@ def write_csv(results_dir, rows):
     fields = [
         "run_id", "timestamp", "algorithm", "workload", "application_case", "thread_count", "write_ratio",
         "duration_sec", "matrix", "access_pattern", "hot_access_probability", "hot_refresh_interval",
+        "arbitration_mode", "hot_shards",
         "attempted_tx", "committed_tx", "aborted_tx", "business_abort_tx",
         "retry_count", "lock_fail_count", "validation_fail_count", "abort_rate",
         "retry_per_commit", "committed_tx_per_sec", "latency_us_p50", "latency_us_p95",
         "latency_us_p99", "hot_object_count", "hot_path_candidate_tx", "hot_path_tx",
         "cold_path_tx", "server_arbitrated_tx", "hot_path_ratio",
-        "server_queue_wait_us_p50", "invariant_violation_count",
+        "server_queue_wait_us_p50", "server_queue_wait_us_p95", "server_queue_wait_us_p99",
+        "server_queue_wait_us_max", "queue_length_p50", "queue_length_p95", "queue_length_p99",
+        "service_time_us_p50", "service_time_us_p95", "service_time_us_p99",
+        "service_time_us_max", "hot_cold_interference_count", "invariant_violation_count",
         "duplicate_commit_count", "final_stock", "sold_count", "initial_stock",
         "context_switches", "cpu_migrations", "page_faults", "elapsed_time_sec",
         "user_time_sec", "sys_time_sec",
@@ -129,7 +134,8 @@ def write_group_csv(results_dir, groups):
         "algorithm", "workload", "thread_count", "write_ratio", "runs",
         "committed_tx_per_sec_mean", "abort_rate_mean", "retry_per_commit_mean",
         "lock_fail_count_mean", "validation_fail_count_mean", "latency_us_p50_mean",
-        "hot_path_ratio_mean", "server_queue_wait_us_p50_mean",
+        "hot_path_ratio_mean", "server_queue_wait_us_p50_mean", "server_queue_wait_us_p95_mean",
+        "server_queue_wait_us_p99_mean", "queue_length_p95_mean", "service_time_us_p95_mean",
     ]
     out = results_dir / "summary_by_config.csv"
     with out.open("w", newline="") as f:
@@ -151,6 +157,10 @@ def write_group_csv(results_dir, groups):
                 "latency_us_p50_mean": stats(rows, "latency_us_p50")["mean"],
                 "hot_path_ratio_mean": stats(rows, "hot_path_ratio")["mean"],
                 "server_queue_wait_us_p50_mean": stats(rows, "server_queue_wait_us_p50")["mean"],
+                "server_queue_wait_us_p95_mean": stats(rows, "server_queue_wait_us_p95")["mean"],
+                "server_queue_wait_us_p99_mean": stats(rows, "server_queue_wait_us_p99")["mean"],
+                "queue_length_p95_mean": stats(rows, "queue_length_p95")["mean"],
+                "service_time_us_p95_mean": stats(rows, "service_time_us_p95")["mean"],
             })
     print(f"Wrote {out}")
 

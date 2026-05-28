@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <algorithm>
+#include <stdexcept>
 
 DSMObjectStore::DSMObjectStore()
     : max_objects_(MAX_OBJECTS), object_count_(0) {
@@ -14,6 +15,18 @@ DSMObjectStore::DSMObjectStore()
 
     // Initialize latency histogram (5 buckets)
     global_stats_.latency_histogram.resize(5, 0);
+    object_mutexes_.reserve(MAX_OBJECTS);
+    object_arbitration_mutexes_.reserve(MAX_OBJECTS);
+    for (uint32_t i = 0; i < MAX_OBJECTS; ++i) {
+        object_mutexes_.push_back(std::make_unique<std::mutex>());
+        object_arbitration_mutexes_.push_back(std::make_unique<std::mutex>());
+    }
+    shard_arbitration_mutexes_.reserve(MAX_ARBITRATION_SHARDS);
+    for (uint32_t i = 0; i < MAX_ARBITRATION_SHARDS; ++i) {
+        shard_arbitration_mutexes_.push_back(std::make_unique<std::mutex>());
+    }
+    object_queue_depths_ = std::vector<std::atomic<uint64_t>>(MAX_OBJECTS);
+    shard_queue_depths_ = std::vector<std::atomic<uint64_t>>(MAX_ARBITRATION_SHARDS);
 }
 
 DSMObjectStore::~DSMObjectStore() {
@@ -106,4 +119,71 @@ int DSMObjectStore::verify_invariants(uint64_t initial_stock, uint64_t& final_st
     }
 
     return 0;
+}
+
+std::mutex& DSMObjectStore::object_mutex(uint64_t object_id) {
+    if (object_id >= object_mutexes_.size()) {
+        throw std::out_of_range("object mutex id out of range");
+    }
+    return *object_mutexes_[object_id];
+}
+
+std::mutex& DSMObjectStore::object_arbitration_mutex(uint64_t object_id) {
+    if (object_id >= object_arbitration_mutexes_.size()) {
+        throw std::out_of_range("object arbitration id out of range");
+    }
+    return *object_arbitration_mutexes_[object_id];
+}
+
+std::mutex& DSMObjectStore::shard_arbitration_mutex(uint64_t shard_id) {
+    shard_id %= shard_arbitration_mutexes_.size();
+    return *shard_arbitration_mutexes_[shard_id];
+}
+
+std::atomic<uint64_t>& DSMObjectStore::object_queue_depth(uint64_t object_id) {
+    if (object_id >= object_queue_depths_.size()) {
+        throw std::out_of_range("object queue id out of range");
+    }
+    return object_queue_depths_[object_id];
+}
+
+std::atomic<uint64_t>& DSMObjectStore::shard_queue_depth(uint64_t shard_id) {
+    shard_id %= shard_queue_depths_.size();
+    return shard_queue_depths_[shard_id];
+}
+
+void DSMObjectStore::record_queue_wait_sample(uint64_t value_us) {
+    std::lock_guard<std::mutex> lock(sample_mutex_);
+    if (queue_wait_samples_.size() < MAX_SAMPLES) {
+        queue_wait_samples_.push_back(value_us);
+    }
+}
+
+void DSMObjectStore::record_queue_length_sample(uint64_t value) {
+    std::lock_guard<std::mutex> lock(sample_mutex_);
+    if (queue_length_samples_.size() < MAX_SAMPLES) {
+        queue_length_samples_.push_back(value);
+    }
+}
+
+void DSMObjectStore::record_service_time_sample(uint64_t value_us) {
+    std::lock_guard<std::mutex> lock(sample_mutex_);
+    if (service_time_samples_.size() < MAX_SAMPLES) {
+        service_time_samples_.push_back(value_us);
+    }
+}
+
+std::vector<uint64_t> DSMObjectStore::queue_wait_samples() {
+    std::lock_guard<std::mutex> lock(sample_mutex_);
+    return queue_wait_samples_;
+}
+
+std::vector<uint64_t> DSMObjectStore::queue_length_samples() {
+    std::lock_guard<std::mutex> lock(sample_mutex_);
+    return queue_length_samples_;
+}
+
+std::vector<uint64_t> DSMObjectStore::service_time_samples() {
+    std::lock_guard<std::mutex> lock(sample_mutex_);
+    return service_time_samples_;
 }

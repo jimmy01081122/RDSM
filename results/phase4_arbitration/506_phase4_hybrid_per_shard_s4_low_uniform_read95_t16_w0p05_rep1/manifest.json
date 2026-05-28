@@ -1,0 +1,15 @@
+{
+  "run_id": "506_phase4_hybrid_per_shard_s4_low_uniform_read95_t16_w0p05_rep1",
+  "timestamp": "2026-05-28T06:45:18Z",
+  "algorithm": "hybrid_arbitration_occ",
+  "workload": "low_uniform_read95",
+  "thread_count": 16,
+  "write_ratio": 0.05,
+  "duration_sec": 1,
+  "max_retries": 100,
+  "matrix": "phase4_arbitration_queue",
+  "arbitration_mode": "per_shard",
+  "hot_shards": 4,
+  "environment": "VirtualBox + Ubuntu 22.04 + Soft-RoCE",
+  "scope_note": "Protocol-level DSM/OCC evidence only; not hardware RNIC performance."
+}

@@ -14,6 +14,8 @@ Last updated: 2026-05-27 UTC
 - Phase 3 raw results: `results/phase3/two_node_soft_roce_20260527_225225/`
 - Phase 3 summary CSV: `results/phase3/two_node_soft_roce_summary.csv`
 - Phase 3 validation report: `results/phase3/phase3_two_node_soft_roce_report.md`
+- Phase 4 preliminary results: `results/phase4_arbitration/`
+- Paper skeleton: `paper.md`
 
 ## Scope Boundary
 
@@ -38,6 +40,9 @@ Last updated: 2026-05-27 UTC
 - Report parser: `scripts/parse_phase2_results.py`
 - Phase 3 two-node Soft-RoCE validation runner: `scripts/run_phase3_two_node_soft_roce_validation.sh`
 - Phase 3 parser: `scripts/parse_phase3_results.py`
+- Phase 4 arbitration modes in `phase2_dsm_benchmark`: `global`, `per_object`, `per_shard`
+- Phase 4 focused runner: `scripts/run_phase4_arbitration_experiments.sh`
+- Phase 4 metrics: queue wait p50/p95/p99/max, queue length p50/p95/p99, service time p50/p95/p99/max
 - Full Chinese report rewritten in `report.md`
 
 ## Rebuild
@@ -134,6 +139,20 @@ After any run:
 python3 scripts/parse_phase2_results.py
 ```
 
+## Rerun Phase 4 Arbitration Queue Matrix
+
+Short discovery run:
+
+```bash
+RESULTS_DIR=./results/phase4_arbitration DURATION_SEC=1 REPETITIONS=1 \
+  ./scripts/run_phase4_arbitration_experiments.sh
+
+RESULTS_DIR=./results/phase4_arbitration \
+  python3 scripts/parse_phase2_results.py
+```
+
+Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the current checked-in dataset is only a smoke/discovery matrix.
+
 ## Current Dataset
 
 - Total parsed runs: 272
@@ -146,6 +165,8 @@ python3 scripts/parse_phase2_results.py
 - Phase 3 successful rows: 28
 - Phase 1 legacy `/stat` rows parsed with Phase 3: 4
 - Phase 3 transport evidence: RC QP metadata, Ethernet link type, GID index 1, local GID containing `192.168.56.102`, remote GID containing `192.168.56.101`
+- Phase 4 preliminary rows: 40
+- Phase 4 correctness status: smoke/discovery rows preserve invariants and duplicate-commit checks
 
 ## Interpretation Notes
 
@@ -163,6 +184,7 @@ python3 scripts/parse_phase2_results.py
 - Phase 3 validates standalone perftest READ/WRITE/SEND/BW transport, not the project DSM transaction path.
 - No remote atomic/CAS validation row is included in Phase 3 yet.
 - Hybrid arbitration uses a coarse mutation lock; future work should shard by hot object or hot-object group.
+- Phase 4 adds queue-level arbitration, but the benchmark is still a local prototype and still has shared application objects such as `sold_count`; do not treat short Phase 4 numbers as final scalability results.
 - Tail latency is approximated from aggregate latency, not sampled percentiles.
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.
@@ -171,8 +193,8 @@ python3 scripts/parse_phase2_results.py
 
 ```bash
 git status --short
-git add experiments include scripts src results/phase3 report.md HANDOFF.md
-git commit -m "phase3: add two-node Soft-RoCE validation report"
+git add experiments include scripts src results/phase3 results/phase4_arbitration report.md HANDOFF.md paper.md
+git commit -m "phase4: add scalable arbitration queue prototype"
 git push origin HEAD
 ```
 

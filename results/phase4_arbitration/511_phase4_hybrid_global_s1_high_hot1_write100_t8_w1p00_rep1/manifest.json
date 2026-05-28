@@ -1,0 +1,15 @@
+{
+  "run_id": "511_phase4_hybrid_global_s1_high_hot1_write100_t8_w1p00_rep1",
+  "timestamp": "2026-05-28T06:45:23Z",
+  "algorithm": "hybrid_arbitration_occ",
+  "workload": "high_hot1_write100",
+  "thread_count": 8,
+  "write_ratio": 1.00,
+  "duration_sec": 1,
+  "max_retries": 100,
+  "matrix": "phase4_arbitration_queue",
+  "arbitration_mode": "global",
+  "hot_shards": 1,
+  "environment": "VirtualBox + Ubuntu 22.04 + Soft-RoCE",
+  "scope_note": "Protocol-level DSM/OCC evidence only; not hardware RNIC performance."
+}

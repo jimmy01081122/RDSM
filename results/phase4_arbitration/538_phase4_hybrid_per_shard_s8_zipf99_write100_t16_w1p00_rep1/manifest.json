@@ -1,0 +1,15 @@
+{
+  "run_id": "538_phase4_hybrid_per_shard_s8_zipf99_write100_t16_w1p00_rep1",
+  "timestamp": "2026-05-28T06:45:52Z",
+  "algorithm": "hybrid_arbitration_occ",
+  "workload": "zipf99_write100",
+  "thread_count": 16,
+  "write_ratio": 1.00,
+  "duration_sec": 1,
+  "max_retries": 100,
+  "matrix": "phase4_arbitration_queue",
+  "arbitration_mode": "per_shard",
+  "hot_shards": 8,
+  "environment": "VirtualBox + Ubuntu 22.04 + Soft-RoCE",
+  "scope_note": "Protocol-level DSM/OCC evidence only; not hardware RNIC performance."
+}

@@ -7,6 +7,7 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
+#include <memory>
 
 enum ObjectType {
     TYPE_PRODUCT_STOCK = 1,
@@ -81,6 +82,12 @@ public:
         std::atomic<uint64_t> hot_path_candidate_tx{0};
         std::atomic<uint64_t> server_queue_wait_total_us{0};
         std::atomic<uint64_t> server_queue_wait_count{0};
+        std::atomic<uint64_t> server_queue_wait_max_us{0};
+        std::atomic<uint64_t> server_service_time_total_us{0};
+        std::atomic<uint64_t> server_service_time_count{0};
+        std::atomic<uint64_t> server_service_time_max_us{0};
+        std::atomic<uint64_t> server_queue_length_max{0};
+        std::atomic<uint64_t> hot_cold_interference_count{0};
         std::vector<uint64_t> latency_histogram;  // [0-10us, 10-50us, 50-100us, 100-500us, 500+us]
     };
 
@@ -94,9 +101,24 @@ public:
 
     // Coarse-grained stand-in for remote atomic/object mutation serialization in this prototype.
     std::mutex& mutation_mutex() { return mutation_mutex_; }
+    std::mutex& object_mutex(uint64_t object_id);
+    std::mutex& global_arbitration_mutex() { return global_arbitration_mutex_; }
+    std::mutex& object_arbitration_mutex(uint64_t object_id);
+    std::mutex& shard_arbitration_mutex(uint64_t shard_id);
+    std::atomic<uint64_t>& global_queue_depth() { return global_queue_depth_; }
+    std::atomic<uint64_t>& object_queue_depth(uint64_t object_id);
+    std::atomic<uint64_t>& shard_queue_depth(uint64_t shard_id);
+    void record_queue_wait_sample(uint64_t value_us);
+    void record_queue_length_sample(uint64_t value);
+    void record_service_time_sample(uint64_t value_us);
+    std::vector<uint64_t> queue_wait_samples();
+    std::vector<uint64_t> queue_length_samples();
+    std::vector<uint64_t> service_time_samples();
 
 private:
     static constexpr uint32_t MAX_OBJECTS = 1000;
+    static constexpr uint32_t MAX_ARBITRATION_SHARDS = 32;
+    static constexpr uint32_t MAX_SAMPLES = 200000;
 
     ObjectHeader* objects_;           // RDMA-visible memory
     uint32_t max_objects_;
@@ -104,6 +126,17 @@ private:
     std::map<uint64_t, ObjectStats> object_stats_;
     std::mutex stats_mutex_;
     std::mutex mutation_mutex_;
+    std::mutex global_arbitration_mutex_;
+    std::atomic<uint64_t> global_queue_depth_{0};
+    std::vector<std::unique_ptr<std::mutex>> object_mutexes_;
+    std::vector<std::unique_ptr<std::mutex>> object_arbitration_mutexes_;
+    std::vector<std::unique_ptr<std::mutex>> shard_arbitration_mutexes_;
+    std::vector<std::atomic<uint64_t>> object_queue_depths_;
+    std::vector<std::atomic<uint64_t>> shard_queue_depths_;
+    std::mutex sample_mutex_;
+    std::vector<uint64_t> queue_wait_samples_;
+    std::vector<uint64_t> queue_length_samples_;
+    std::vector<uint64_t> service_time_samples_;
     GlobalStats global_stats_;
 };
 

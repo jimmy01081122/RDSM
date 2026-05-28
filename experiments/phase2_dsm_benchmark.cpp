@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <sstream>
 #include <thread>
+#include <vector>
 
 namespace {
 
@@ -45,6 +46,65 @@ void add_latency(DSMObjectStore::GlobalStats* stats, uint64_t latency_us) {
     } else {
         stats->latency_histogram[4]++;
     }
+}
+
+void update_atomic_max(std::atomic<uint64_t>& target, uint64_t value) {
+    uint64_t current = target.load();
+    while (value > current && !target.compare_exchange_weak(current, value)) {
+    }
+}
+
+double percentile(std::vector<uint64_t> values, double p) {
+    if (values.empty()) {
+        return 0.0;
+    }
+    std::sort(values.begin(), values.end());
+    const double idx = (p / 100.0) * static_cast<double>(values.size() - 1);
+    return static_cast<double>(values[static_cast<size_t>(std::round(idx))]);
+}
+
+uint64_t normalized_hot_shards(const BenchmarkConfig& config) {
+    if (config.hot_shards == 0) {
+        return 1;
+    }
+    return std::max<uint32_t>(1, std::min<uint32_t>(32, config.hot_shards));
+}
+
+std::atomic<uint64_t>& selected_queue_depth(const BenchmarkConfig& config,
+                                            DSMObjectStore* store,
+                                            uint64_t product_id) {
+    if (config.arbitration_mode == "per_object") {
+        return store->object_queue_depth(product_id);
+    }
+    if (config.arbitration_mode == "per_shard") {
+        return store->shard_queue_depth(product_id % normalized_hot_shards(config));
+    }
+    return store->global_queue_depth();
+}
+
+std::mutex& selected_arbitration_mutex(const BenchmarkConfig& config,
+                                       DSMObjectStore* store,
+                                       uint64_t product_id) {
+    if (config.arbitration_mode == "per_object") {
+        return store->object_arbitration_mutex(product_id);
+    }
+    if (config.arbitration_mode == "per_shard") {
+        return store->shard_arbitration_mutex(product_id % normalized_hot_shards(config));
+    }
+    return store->global_arbitration_mutex();
+}
+
+std::vector<std::unique_lock<std::mutex>> lock_order_objects(DSMObjectStore* store,
+                                                            std::vector<uint64_t> object_ids) {
+    std::sort(object_ids.begin(), object_ids.end());
+    object_ids.erase(std::unique(object_ids.begin(), object_ids.end()), object_ids.end());
+
+    std::vector<std::unique_lock<std::mutex>> locks;
+    locks.reserve(object_ids.size());
+    for (uint64_t object_id : object_ids) {
+        locks.emplace_back(store->object_mutex(object_id));
+    }
+    return locks;
 }
 
 } // namespace
@@ -186,28 +246,66 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     stats->hot_path_tx++;
     stats->server_arbitrated_tx++;
 
+    auto& queue_depth = selected_queue_depth(config, store, order.product_id);
+    uint64_t queue_length = queue_depth.fetch_add(1);
+    store->record_queue_length_sample(queue_length);
+    update_atomic_max(stats->server_queue_length_max, queue_length);
+
     const uint64_t wait_start_us = OCCEngine::get_time_us();
-    std::unique_lock<std::mutex> lock(store->mutation_mutex());
+    std::unique_lock<std::mutex> arbitration_lock(
+        selected_arbitration_mutex(config, store, order.product_id));
+    queue_depth.fetch_sub(1);
     const uint64_t wait_us = OCCEngine::get_time_us() - wait_start_us;
     stats->server_queue_wait_total_us += wait_us;
     stats->server_queue_wait_count++;
+    update_atomic_max(stats->server_queue_wait_max_us, wait_us);
+    store->record_queue_wait_sample(wait_us);
+
+    const uint64_t service_start_us = OCCEngine::get_time_us();
+
+    std::unique_lock<std::mutex> global_data_lock;
+    std::vector<std::unique_lock<std::mutex>> object_locks;
+    if (config.arbitration_mode == "global") {
+        global_data_lock = std::unique_lock<std::mutex>(store->mutation_mutex());
+    } else {
+        object_locks = lock_order_objects(store, {
+            order.product_id,
+            config.num_products + order.user_id,
+            config.num_products + config.num_users,
+        });
+    }
 
     ObjectHeader* stock = store->get_object_header(order.product_id);
     ObjectHeader* balance = store->get_object_header(config.num_products + order.user_id);
     ObjectHeader* sold = store->get_object_header(config.num_products + config.num_users);
     if (!stock || !balance || !sold) {
         stats->aborted_tx++;
+        uint64_t service_us = OCCEngine::get_time_us() - service_start_us;
+        stats->server_service_time_total_us += service_us;
+        stats->server_service_time_count++;
+        update_atomic_max(stats->server_service_time_max_us, service_us);
+        store->record_service_time_sample(service_us);
         return -1;
     }
 
     if (order.is_read_only) {
         stats->committed_tx++;
         add_latency(stats, OCCEngine::get_time_us() - start_us);
+        uint64_t service_us = OCCEngine::get_time_us() - service_start_us;
+        stats->server_service_time_total_us += service_us;
+        stats->server_service_time_count++;
+        update_atomic_max(stats->server_service_time_max_us, service_us);
+        store->record_service_time_sample(service_us);
         return 0;
     }
 
     if (stock->value == 0 || balance->value < order.price) {
         stats->business_abort_tx++;
+        uint64_t service_us = OCCEngine::get_time_us() - service_start_us;
+        stats->server_service_time_total_us += service_us;
+        stats->server_service_time_count++;
+        update_atomic_max(stats->server_service_time_max_us, service_us);
+        store->record_service_time_sample(service_us);
         return -1;
     }
 
@@ -223,6 +321,11 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     sold->last_writer_tx_id = writer;
     stats->committed_tx++;
     add_latency(stats, OCCEngine::get_time_us() - start_us);
+    uint64_t service_us = OCCEngine::get_time_us() - service_start_us;
+    stats->server_service_time_total_us += service_us;
+    stats->server_service_time_count++;
+    update_atomic_max(stats->server_service_time_max_us, service_us);
+    store->record_service_time_sample(service_us);
     return 0;
 }
 
@@ -348,10 +451,21 @@ RunResult BenchmarkRunner::get_result() {
     result.cold_path_tx = stats->cold_path_tx;
     result.hot_path_ratio = (stats->attempted_tx > 0) ?
         static_cast<double>(stats->hot_path_tx) / stats->attempted_tx : 0.0;
-    result.server_queue_wait_p50_us = stats->server_queue_wait_count > 0 ?
-        static_cast<double>(stats->server_queue_wait_total_us) / stats->server_queue_wait_count : 0.0;
-    result.server_queue_wait_p95_us = result.server_queue_wait_p50_us * 1.5;
-    result.server_queue_wait_p99_us = result.server_queue_wait_p50_us * 2.0;
+    auto wait_samples = store_->queue_wait_samples();
+    auto length_samples = store_->queue_length_samples();
+    auto service_samples = store_->service_time_samples();
+    result.server_queue_wait_p50_us = percentile(wait_samples, 50.0);
+    result.server_queue_wait_p95_us = percentile(wait_samples, 95.0);
+    result.server_queue_wait_p99_us = percentile(wait_samples, 99.0);
+    result.server_queue_wait_max_us = static_cast<double>(stats->server_queue_wait_max_us.load());
+    result.queue_length_p50 = percentile(length_samples, 50.0);
+    result.queue_length_p95 = percentile(length_samples, 95.0);
+    result.queue_length_p99 = percentile(length_samples, 99.0);
+    result.service_time_p50_us = percentile(service_samples, 50.0);
+    result.service_time_p95_us = percentile(service_samples, 95.0);
+    result.service_time_p99_us = percentile(service_samples, 99.0);
+    result.service_time_max_us = static_cast<double>(stats->server_service_time_max_us.load());
+    result.hot_cold_interference_count = stats->hot_cold_interference_count;
 
     uint64_t initial_stock = config_.num_products * kInitialStockPerProduct;
     store_->verify_invariants(initial_stock, result.final_stock, result.sold_count);
@@ -370,6 +484,7 @@ static void print_help(const char* argv0) {
               << "--backoff-policy NO_BACKOFF|FIXED_BACKOFF|EXPONENTIAL_BACKOFF|RANDOMIZED_EXPONENTIAL_BACKOFF|CONTENTION_AWARE_BACKOFF\n"
               << "--backoff-base-us N --backoff-max-us N --hot-detection-enabled true|false\n"
               << "--hot-threshold R --hot-window-ms N --hot-min-access N --hot-refresh-interval N --hybrid-enabled true|false\n"
+              << "--arbitration-mode global|per_object|per_shard --hot-shards 1|2|4|8|16|32\n"
               << "--output-file FILE\n";
 }
 
@@ -394,7 +509,8 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     config.hot_min_access = 10;
     config.hot_refresh_interval = 64;
     config.hybrid_enabled = false;
-    config.arbitration_mode = "fifo";
+    config.arbitration_mode = "global";
+    config.hot_shards = 4;
     config.server_queue_size = 1000;
     config.server_worker_threads = 1;
 
@@ -430,6 +546,7 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         else if (arg == "--hot-refresh-interval") config.hot_refresh_interval = std::stoul(next());
         else if (arg == "--hybrid-enabled") config.hybrid_enabled = to_bool(next());
         else if (arg == "--arbitration-mode") config.arbitration_mode = next();
+        else if (arg == "--hot-shards") config.hot_shards = std::stoul(next());
         else if (arg == "--server-queue-size") config.server_queue_size = std::stoul(next());
         else if (arg == "--server-worker-threads") config.server_worker_threads = std::stoul(next());
         else if (arg == "--hot-products") {
@@ -452,6 +569,15 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         config.hybrid_enabled = true;
     }
     config.hot_access_probability = std::max(0.0, std::min(1.0, config.hot_access_probability));
+    if (config.arbitration_mode != "global" &&
+        config.arbitration_mode != "per_object" &&
+        config.arbitration_mode != "per_shard") {
+        throw std::runtime_error("invalid --arbitration-mode: " + config.arbitration_mode);
+    }
+    if (config.hot_shards == 0) {
+        config.hot_shards = 1;
+    }
+    config.hot_shards = std::max<uint32_t>(1, std::min<uint32_t>(32, config.hot_shards));
 
     return config;
 }
@@ -470,6 +596,8 @@ int main(int argc, char* argv[]) {
     output.add("access_pattern", config.access_pattern);
     output.add("hot_access_probability", config.hot_access_probability);
     output.add("hot_refresh_interval", (long long)config.hot_refresh_interval);
+    output.add("arbitration_mode", config.arbitration_mode);
+    output.add("hot_shards", (long long)config.hot_shards);
     output.add("attempted_tx", (long long)result.attempted_tx);
     output.add("committed_tx", (long long)result.committed_tx);
     output.add("aborted_tx", (long long)result.aborted_tx);
@@ -492,6 +620,15 @@ int main(int argc, char* argv[]) {
     output.add("server_queue_wait_us_p50", result.server_queue_wait_p50_us);
     output.add("server_queue_wait_us_p95", result.server_queue_wait_p95_us);
     output.add("server_queue_wait_us_p99", result.server_queue_wait_p99_us);
+    output.add("server_queue_wait_us_max", result.server_queue_wait_max_us);
+    output.add("queue_length_p50", result.queue_length_p50);
+    output.add("queue_length_p95", result.queue_length_p95);
+    output.add("queue_length_p99", result.queue_length_p99);
+    output.add("service_time_us_p50", result.service_time_p50_us);
+    output.add("service_time_us_p95", result.service_time_p95_us);
+    output.add("service_time_us_p99", result.service_time_p99_us);
+    output.add("service_time_us_max", result.service_time_max_us);
+    output.add("hot_cold_interference_count", (long long)result.hot_cold_interference_count);
     output.add("invariant_violation_count", (long long)result.invariant_violation_count);
     output.add("duplicate_commit_count", (long long)result.duplicate_commit_count);
     output.add("final_stock", (long long)result.final_stock);

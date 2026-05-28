@@ -38,7 +38,8 @@ struct BenchmarkConfig {
 
     // Hybrid arbitration parameters
     bool hybrid_enabled;
-    std::string arbitration_mode;  // fifo
+    std::string arbitration_mode;  // global, per_object, per_shard
+    uint32_t hot_shards;
     uint32_t server_queue_size;
     uint32_t server_worker_threads;
 
@@ -100,6 +101,15 @@ struct RunResult {
     double server_queue_wait_p50_us;
     double server_queue_wait_p95_us;
     double server_queue_wait_p99_us;
+    double server_queue_wait_max_us;
+    double queue_length_p50;
+    double queue_length_p95;
+    double queue_length_p99;
+    double service_time_p50_us;
+    double service_time_p95_us;
+    double service_time_p99_us;
+    double service_time_max_us;
+    uint64_t hot_cold_interference_count;
 
     // Correctness
     uint64_t invariant_violation_count;

@@ -45,11 +45,11 @@
 | Phase 5 | Adaptive routing prototype | 部分完成 | `hybrid_adaptive_arbitration_occ`、`results/phase5_adaptive_routing/adaptive_smoke_summary.md` | 尚需 calibration 與 default selection。 |
 | Phase 5 | Adaptive routing calibration | 完成 | `results/phase5_adaptive_routing/calibration_summary.md`、`.csv` | 54 runs correctness-clean；selected default 為 `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8`。 |
 | Phase 5 | Formal phase-change approximation | 完成 | `results/phase5_adaptive_routing/phase_change_summary.md`、`.csv` | 18 rows correctness-clean；仍只是 multi-process approximation，不是 continuous in-process adaptation。 |
-| Final | Reduced focused final matrix | 待執行 | `scripts/run_final_focused_matrix.sh` 已建立；目標：`results/final_focused_matrix/` | 預估耗時較長，執行前需確認 runtime budget。 |
+| Final | Reduced focused final matrix | 完成 | `results/final_focused_matrix/summary.csv`、`summary_by_config.csv`、`final_summary.md`、`statistical_report.md`、`run_metadata.json` | 540 rows correctness-clean；這是 reduced focused final matrix，不是 publication-grade full evaluation。 |
 | Final | Global vs per-product controlled comparison | 待執行 | 目標：final report / dedicated result section | 需用 selected adaptive default 與 static per_shard_8。 |
-| Final | Statistical report | 待執行 | 目標：`results/final_focused_matrix/statistical_report.md` | 需含 mean/stddev/95% CI/repetitions/duration/sampling policy。 |
-| Final | Final `paper.md` convergence | 部分完成 | `paper.md` 已重編 Phase 結構 | 需在 calibration/final matrix 後補數據與結論。 |
-| Final | Final `HANDOFF.md` convergence | 部分完成 | `HANDOFF.md` | 需在 final runs 後更新 selected adaptive default 與 commands。 |
+| Final | Statistical report | 完成 | `results/final_focused_matrix/statistical_report.md` | 已含 mean/stddev/95% CI/repetitions/duration/sampling policy。 |
+| Final | Final `paper.md` convergence | 部分完成 | `paper.md` 已補 reduced final matrix 狀態 | 若要完成中文完整報告，仍需把 final matrix 數據整合進 `report.md`。 |
+| Final | Final `HANDOFF.md` convergence | 完成 | `HANDOFF.md` | 已更新 final matrix rows、correctness 與重現指令。 |
 
 ## Future Work Status
 
@@ -64,7 +64,7 @@
 |---|---|---|
 | Adaptive routing default | Calibration 選出 `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8` | 已定，但需在 final matrix 後重新評估是否支持效能主張 |
 | Final latency sample size | 目前建議 `10000` | 待確認 |
-| Final matrix duration/repetitions | codex5 指定 `duration_sec=10`, `repetitions=3` | 執行前需確認 |
+| Final matrix duration/repetitions | 已執行 `duration_sec=10`, `repetitions=3` | 已完成 |
 | Main thread counts | `1,2,4` | 已定 |
 | Sold-counter policy | Main arbitration-isolation 使用 `per_product`; `global` 僅作 controlled bottleneck comparison | 已定 |
 | Final report language | 尚未明確；目前 `paper.md` 英文，`report.md` 中文 | 待確認 |

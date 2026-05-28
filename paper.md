@@ -149,7 +149,9 @@ The calibration also exposes a limitation: this minimal adaptive prototype is co
 
 ### 9.3 Focused Synthetic Workloads
 
-Synthetic workloads should be reported separately:
+The reduced focused final matrix completed 324 synthetic rows: 6 synthetic workloads, 6 algorithm variants, thread counts 1/2/4, and 3 repetitions. All rows are correctness-clean with zero invariant violations and zero duplicate commits. These results are reduced focused evidence, not a publication-grade full evaluation.
+
+Synthetic workloads are reported separately:
 
 - `low_uniform_read95`
 - `mixed_uniform_write20`
@@ -160,7 +162,9 @@ Synthetic workloads should be reported separately:
 
 ### 9.4 Application-like Workloads
 
-Application-like workloads should be reported in a separate section:
+The reduced focused final matrix completed 216 application-like rows: 4 application-like workloads, 6 algorithm variants, thread counts 1/2/4, and 3 repetitions. All rows are correctness-clean with zero invariant violations and zero duplicate commits.
+
+Application-like workloads are reported in a separate section:
 
 - `flash_sale_spike`
 - `ticket_booking_hot_event`
@@ -184,6 +188,8 @@ Latency overhead must be disclosed with any latency result. Full sampling is not
 ## 10. Discussion
 
 OCC is appropriate when contention is low. Backoff is useful when conflicts are moderate and timing-related. Static arbitration helps when hot objects are stable and routing is accurate. Per-object and per-shard arbitration reduce artificial over-serialization compared with global arbitration only when the application data model does not add another shared bottleneck. Adaptive routing is promising only if calibration and final matrix data show that it avoids unnecessary arbitration and p99 regression.
+
+The current reduced final matrix is correctness-clean and provides a much stronger basis than the earlier smoke/discovery rows. However, it remains reduced: duration is 10 seconds per run, repetitions are 3, and all results are from the local prototype under virtualized Linux + Soft-RoCE constraints. It should be described as reduced focused final evidence, not as a full publication-grade evaluation.
 
 ## 11. Limitations
 

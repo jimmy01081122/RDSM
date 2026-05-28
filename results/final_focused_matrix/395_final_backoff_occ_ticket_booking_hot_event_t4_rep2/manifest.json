@@ -1,0 +1,19 @@
+{
+  "run_id": "395_final_backoff_occ_ticket_booking_hot_event_t4_rep2",
+  "timestamp": "2026-05-28T13:09:43Z",
+  "algorithm": "backoff_occ",
+  "algorithm_label": "backoff_occ",
+  "workload": "ticket_booking_hot_event",
+  "thread_count": 4,
+  "duration_sec": 10,
+  "matrix": "final_focused_matrix",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "sold_counter_mode": "per_product",
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Reduced focused final matrix; synthetic and application-like workloads must be reported separately."
+}

@@ -1,0 +1,19 @@
+{
+  "run_id": "448_final_backoff_occ_ad_budget_read_heavy_dashboard_t4_rep1",
+  "timestamp": "2026-05-28T13:18:39Z",
+  "algorithm": "backoff_occ",
+  "algorithm_label": "backoff_occ",
+  "workload": "ad_budget_read_heavy_dashboard",
+  "thread_count": 4,
+  "duration_sec": 10,
+  "matrix": "final_focused_matrix",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "sold_counter_mode": "per_product",
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Reduced focused final matrix; synthetic and application-like workloads must be reported separately."
+}

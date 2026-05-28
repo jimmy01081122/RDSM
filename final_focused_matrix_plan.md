@@ -24,6 +24,8 @@ adaptive default = routing_margin_us=5, cost_window_ms=500, min_samples_before_a
 
 Report mean, standard deviation, 95% confidence interval, repetition count, warmup duration, and measurement duration.
 
+Status: completed as a reduced focused final matrix in `results/final_focused_matrix/`. The completed dataset contains 540 rows, all correctness-clean. Treat it as reduced focused final evidence, not as a publication-grade full evaluation.
+
 ## Main-Text Synthetic Focused Workloads
 
 ```text

@@ -74,7 +74,10 @@ def aggregate_results(results_dir):
         if not manifest_path.exists() or not app_path.exists():
             continue
         try:
-            run = {**load_json(manifest_path), **load_json(app_path), **parse_os_metrics(run_dir)}
+            manifest = load_json(manifest_path)
+            run = {**manifest, **load_json(app_path), **parse_os_metrics(run_dir)}
+            if "algorithm_label" in manifest:
+                run["algorithm"] = manifest["algorithm_label"]
         except Exception as exc:
             print(f"Skipping {run_dir}: {exc}")
             continue

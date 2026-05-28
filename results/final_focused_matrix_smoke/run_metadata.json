@@ -1,0 +1,16 @@
+{
+  "duration_sec": 1,
+  "repetitions": 1,
+  "threads": [
+    1,
+    2,
+    4
+  ],
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5.0,
+  "cost_window_ms": 500,
+  "matrix_scope": "reduced focused final matrix; not publication-grade full evaluation",
+  "appendix_only_filtering_rule": "threads > 4 are appendix-only; this matrix uses only 1/2/4",
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe"
+}

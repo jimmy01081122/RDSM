@@ -250,7 +250,10 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Phase 5 scripted phase-change approximation rows: 18
 - Phase 5 scripted phase-change approximation correctness: PASS; invariant violations 0, duplicate commits 0
 - Phase 5 adaptive routing status: calibrated prototype only; no final performance claim until reduced final matrix is run
-- Final focused matrix: not completed in the current checked-in artifacts.
+- Reduced final focused matrix rows: 540
+- Reduced final focused matrix correctness: PASS; invariant violations 0, duplicate commits 0
+- Reduced final focused matrix scope: 10-second runs, 3 repetitions, threads 1/2/4, reservoir latency sampling with sample size 10,000
+- Reduced final focused matrix status: completed; this is not a publication-grade full evaluation
 
 ## Interpretation Notes
 
@@ -355,6 +358,15 @@ Reduced final matrix target:
 
 ```bash
 DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
+  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
+  ./scripts/run_final_focused_matrix.sh
+```
+
+Smoke subset:
+
+```bash
+FINAL_MATRIX_SMOKE=1 RESULTS_DIR=./results/final_focused_matrix_smoke \
+  DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
   ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
   ./scripts/run_final_focused_matrix.sh
 ```

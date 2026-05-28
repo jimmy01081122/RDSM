@@ -1,0 +1,19 @@
+{
+  "run_id": "110_final_baseline_occ_mixed_hot4_write50_t1_rep2",
+  "timestamp": "2026-05-28T12:21:40Z",
+  "algorithm": "baseline_occ",
+  "algorithm_label": "baseline_occ",
+  "workload": "mixed_hot4_write50",
+  "thread_count": 1,
+  "duration_sec": 10,
+  "matrix": "final_focused_matrix",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "sold_counter_mode": "per_product",
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Reduced focused final matrix; synthetic and application-like workloads must be reported separately."
+}

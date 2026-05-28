@@ -1,0 +1,23 @@
+	Command being timed: "./build/phase2_dsm_benchmark --application-case flash_sale --products 64 --users 200 --hot-products 0 --hot-access-prob 0.00 --access-pattern zipfian_0.99 --write-ratio 0.50 --algorithm backoff_occ --backoff-policy CONTENTION_AWARE_BACKOFF --hybrid-enabled false --hot-detection-enabled false --arbitration-mode global --hot-shards 1 --workload-name long_tail_marketplace_zipf --threads 4 --duration-sec 10 --max-retries 100 --sold-counter-mode per_product --latency-sampling reservoir --latency-sample-size 10000 --output-file ./results/final_focused_matrix/504_final_backoff_occ_long_tail_marketplace_zipf_t4_rep3/app_metrics.json"
+	User time (seconds): 7.03
+	System time (seconds): 3.90
+	Percent of CPU this job got: 109%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:10.01
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 10580
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 2640
+	Voluntary context switches: 5097
+	Involuntary context switches: 151
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 16
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

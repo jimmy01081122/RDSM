@@ -1,0 +1,19 @@
+{
+  "run_id": "362_final_hybrid_static_arbitration_occ_per_shard_8_flash_sale_spike_t1_rep2",
+  "timestamp": "2026-05-28T13:04:09Z",
+  "algorithm": "hybrid_static_arbitration_occ_per_shard_8",
+  "algorithm_label": "hybrid_static_arbitration_occ_per_shard_8",
+  "workload": "flash_sale_spike",
+  "thread_count": 1,
+  "duration_sec": 10,
+  "matrix": "final_focused_matrix",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "sold_counter_mode": "per_product",
+  "latency_sampling_mode": "reservoir",
+  "latency_sample_size": 10000,
+  "routing_margin_us": 5,
+  "cost_window_ms": 500,
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Reduced focused final matrix; synthetic and application-like workloads must be reported separately."
+}

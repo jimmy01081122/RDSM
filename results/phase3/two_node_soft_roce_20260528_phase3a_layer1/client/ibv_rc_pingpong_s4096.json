@@ -1,0 +1,15 @@
+{
+  "phase": "phase3_two_node_soft_roce_validation",
+  "role": "client",
+  "client_hostname": "node2",
+  "server_ip": "192.168.56.101",
+  "rdma_device": "rxe0",
+  "test": "ibv_rc_pingpong",
+  "payload_size_bytes": 4096,
+  "command": "ibv_rc_pingpong -d rxe0 -g 1 -s 4096 -n 100 192.168.56.101",
+  "start_time": "2026-05-28T07:09:40+00:00",
+  "end_time": "2026-05-28T07:09:40+00:00",
+  "exit_code": 0,
+  "stdout": "  local address:  LID 0x0000, QPN 0x000011, PSN 0xf859f2, GID ::ffff:192.168.56.102\n  remote address: LID 0x0000, QPN 0x000011, PSN 0xc30038, GID ::ffff:192.168.56.101\n819200 bytes in 0.43 seconds = 15.16 Mbit/sec\n100 iters in 0.43 seconds = 4322.86 usec/iter\n",
+  "stderr": ""
+}

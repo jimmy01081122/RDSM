@@ -13,19 +13,18 @@ This summary validates Soft-RoCE verbs transport functionality only. It does not
 
 | Layer | Operation | Status | Rows | Success | Failure | Notes |
 |---|---|---|---:|---:|---:|---|
-| external_verbs_tool | ibv_rc_pingpong | not_collected | 0 | 0 | 0 | not present in current Phase 3 artifacts |
-| external_verbs_tool | ib_write_bw | success | 7 | 7 | 0 | parsed from Phase 3 rerun perftest outputs |
-| external_verbs_tool | ib_read_bw | not_collected | 0 | 0 | 0 | not present in current Phase 3 artifacts |
-| external_verbs_tool | ib_write_lat | success | 7 | 7 | 0 | parsed from Phase 3 rerun perftest outputs |
-| external_verbs_tool | ib_read_lat | success | 7 | 7 | 0 | parsed from Phase 3 rerun perftest outputs |
-| external_verbs_tool | ib_send_lat | success | 7 | 7 | 0 | parsed from Phase 3 rerun perftest outputs |
-| project_two_node_rdma_validation | RDMA_WRITE | not_implemented | 0 | 0 | 0 | two_node_rdma_validation executable is not present yet; no project wrapper READ/WRITE/CAS result exists |
-| project_two_node_rdma_validation | RDMA_READ | not_implemented | 0 | 0 | 0 | two_node_rdma_validation executable is not present yet; no project wrapper READ/WRITE/CAS result exists |
-| project_two_node_rdma_validation | RDMA_CAS | not_implemented | 0 | 0 | 0 | two_node_rdma_validation executable is not present yet; no project wrapper READ/WRITE/CAS result exists |
+| external_verbs_tool | ibv_rc_pingpong | success | 2 | 2 | 0 | parsed from Phase 3/3a perftest outputs |
+| external_verbs_tool | ib_write_bw | success | 7 | 7 | 0 | parsed from Phase 3/3a perftest outputs |
+| external_verbs_tool | ib_read_bw | success | 2 | 2 | 0 | parsed from Phase 3/3a perftest outputs |
+| external_verbs_tool | ib_write_lat | success | 7 | 7 | 0 | parsed from Phase 3/3a perftest outputs |
+| external_verbs_tool | ib_read_lat | success | 7 | 7 | 0 | parsed from Phase 3/3a perftest outputs |
+| external_verbs_tool | ib_send_lat | success | 7 | 7 | 0 | parsed from Phase 3/3a perftest outputs |
+| project_two_node_rdma_validation | RDMA_WRITE | deferred | 0 | 0 | 0 | deferred: existing RDMA wrapper needs connection/MR/CQ setup work and should not block Phase 5 |
+| project_two_node_rdma_validation | RDMA_READ | deferred | 0 | 0 | 0 | deferred: existing RDMA wrapper needs connection/MR/CQ setup work and should not block Phase 5 |
+| project_two_node_rdma_validation | RDMA_CAS | deferred | 0 | 0 | 0 | deferred: existing RDMA wrapper needs connection/MR/CQ setup work and should not block Phase 5 |
 
 ## Interpretation
 
-- `ib_write_bw`, `ib_write_lat`, `ib_read_lat`, and `ib_send_lat` completed successfully across node2 -> node1 in the Phase 3 rerun.
-- `ibv_rc_pingpong` and `ib_read_bw` are not present in the current artifacts and should be collected if Layer 1 coverage must be complete.
-- The project-specific `two_node_rdma_validation` executable is still future work; therefore READ/WRITE/CAS wrapper success counts are intentionally reported as not implemented, not silently assumed.
-- The observed latency jitter remains a transport diagnostic, not DSM transaction latency evidence.
+- `ibv_rc_pingpong`, `ib_write_bw`, `ib_read_bw`, `ib_write_lat`, `ib_read_lat`, and `ib_send_lat` have successful two-node Soft-RoCE rows in the current artifacts.
+- Project-level `two_node_rdma_validation` is deferred because the existing RDMA wrapper needs non-trivial connection/MR/CQ setup work; this should not block Phase 5 latency sampling.
+- The observed latency/bandwidth values remain transport diagnostics, not DSM transaction performance evidence.

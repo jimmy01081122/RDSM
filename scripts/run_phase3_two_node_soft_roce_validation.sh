@@ -115,17 +115,19 @@ collect_env() {
 }
 
 stop_server_processes() {
-  ssh_cmd "pkill -f ib_write_lat || true; pkill -f ib_read_lat || true; pkill -f ib_send_lat || true; pkill -f ib_write_bw || true"
+  ssh_cmd "pkill -f ibv_rc_pingpong || true; pkill -f ib_write_lat || true; pkill -f ib_read_lat || true; pkill -f ib_send_lat || true; pkill -f ib_write_bw || true; pkill -f ib_read_bw || true"
 }
 
 server_command() {
   local test_name="$1"
   local size="$2"
   case "$test_name" in
+    ibv_rc_pingpong) echo "timeout $SERVER_TIMEOUT_SEC ibv_rc_pingpong -d $RDMA_DEV -g 1 -s $size -n $LAT_ITERS" ;;
     ib_write_lat) echo "timeout $SERVER_TIMEOUT_SEC ib_write_lat -d $RDMA_DEV -F -s $size -n $LAT_ITERS" ;;
     ib_read_lat) echo "timeout $SERVER_TIMEOUT_SEC ib_read_lat -d $RDMA_DEV -F -s $size -n $LAT_ITERS" ;;
     ib_send_lat) echo "timeout $SERVER_TIMEOUT_SEC ib_send_lat -d $RDMA_DEV -F -s $size -n $LAT_ITERS" ;;
     ib_write_bw) echo "timeout $SERVER_TIMEOUT_SEC ib_write_bw -d $RDMA_DEV -F -s $size -D $BW_DURATION" ;;
+    ib_read_bw) echo "timeout $SERVER_TIMEOUT_SEC ib_read_bw -d $RDMA_DEV -F -s $size -D $BW_DURATION" ;;
     *) echo "unknown" ;;
   esac
 }
@@ -134,10 +136,12 @@ client_command() {
   local test_name="$1"
   local size="$2"
   case "$test_name" in
+    ibv_rc_pingpong) echo "ibv_rc_pingpong -d $RDMA_DEV -g 1 -s $size -n $LAT_ITERS $SERVER_IP" ;;
     ib_write_lat) echo "ib_write_lat -d $RDMA_DEV -F -s $size -n $LAT_ITERS $SERVER_IP" ;;
     ib_read_lat) echo "ib_read_lat -d $RDMA_DEV -F -s $size -n $LAT_ITERS $SERVER_IP" ;;
     ib_send_lat) echo "ib_send_lat -d $RDMA_DEV -F -s $size -n $LAT_ITERS $SERVER_IP" ;;
     ib_write_bw) echo "ib_write_bw -d $RDMA_DEV -F -s $size -D $BW_DURATION $SERVER_IP" ;;
+    ib_read_bw) echo "ib_read_bw -d $RDMA_DEV -F -s $size -D $BW_DURATION $SERVER_IP" ;;
     *) echo "unknown" ;;
   esac
 }

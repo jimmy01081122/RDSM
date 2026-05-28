@@ -63,6 +63,14 @@ double percentile(std::vector<uint64_t> values, double p) {
     return static_cast<double>(values[static_cast<size_t>(std::round(idx))]);
 }
 
+uint64_t sold_object_id(const BenchmarkConfig& config, uint64_t product_id) {
+    const uint64_t base = config.num_products + config.num_users;
+    if (config.sold_counter_mode == "per_product") {
+        return base + product_id;
+    }
+    return base;
+}
+
 uint64_t normalized_hot_shards(const BenchmarkConfig& config) {
     if (config.hot_shards == 0) {
         return 1;
@@ -172,7 +180,7 @@ void InventoryWorkload::generate_order_transaction(Transaction& tx, int thread_i
         return;
     }
 
-    const uint64_t sold_obj_id = config_.num_products + config_.num_users;
+    const uint64_t sold_obj_id = sold_object_id(config_, order.product_id);
     uint64_t sold_value = 0, sold_version = 0;
     engine_->read_object(tx, sold_obj_id, sold_value, sold_version);
     engine_->write_object(tx, stock_obj_id, stock_value - 1);
@@ -196,7 +204,13 @@ int BenchmarkRunner::initialize_server() {
     for (uint32_t i = 0; i < config_.num_users; i++) {
         store_->create_object(config_.num_products + i, TYPE_USER_BALANCE, kInitialUserBalance);
     }
-    store_->create_object(config_.num_products + config_.num_users, TYPE_SOLD_COUNT, 0);
+    if (config_.sold_counter_mode == "per_product") {
+        for (uint32_t i = 0; i < config_.num_products; i++) {
+            store_->create_object(config_.num_products + config_.num_users + i, TYPE_SOLD_COUNT, 0);
+        }
+    } else {
+        store_->create_object(config_.num_products + config_.num_users, TYPE_SOLD_COUNT, 0);
+    }
     return 0;
 }
 
@@ -267,12 +281,12 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     object_locks = lock_order_objects(store, {
         order.product_id,
         config.num_products + order.user_id,
-        config.num_products + config.num_users,
+        sold_object_id(config, order.product_id),
     });
 
     ObjectHeader* stock = store->get_object_header(order.product_id);
     ObjectHeader* balance = store->get_object_header(config.num_products + order.user_id);
-    ObjectHeader* sold = store->get_object_header(config.num_products + config.num_users);
+    ObjectHeader* sold = store->get_object_header(sold_object_id(config, order.product_id));
     if (!stock || !balance || !sold) {
         stats->aborted_tx++;
         uint64_t service_us = OCCEngine::get_time_us() - service_start_us;
@@ -344,7 +358,7 @@ static void run_occ_order(const BenchmarkConfig& config,
         uint64_t sold_value = 0, sold_version = 0;
         uint64_t stock_obj_id = order.product_id;
         uint64_t balance_obj_id = config.num_products + order.user_id;
-        uint64_t sold_obj_id = config.num_products + config.num_users;
+        uint64_t sold_obj_id = sold_object_id(config, order.product_id);
 
         engine->read_object(tx, stock_obj_id, stock_value, stock_version);
         if (!order.is_read_only) {
@@ -475,6 +489,7 @@ static void print_help(const char* argv0) {
               << "--application-case flash_sale|ticket_booking|ad_budget|warehouse_restock\n"
               << "--access-pattern uniform|zipfian_0.8|zipfian_0.99\n"
               << "--hot-products N --hot-access-prob P --duration-sec N --max-retries N\n"
+              << "--sold-counter-mode global|per_product\n"
               << "--algorithm baseline_occ|backoff_occ|hot_detection_occ|hybrid_arbitration_occ\n"
               << "--backoff-policy NO_BACKOFF|FIXED_BACKOFF|EXPONENTIAL_BACKOFF|RANDOMIZED_EXPONENTIAL_BACKOFF|CONTENTION_AWARE_BACKOFF\n"
               << "--backoff-base-us N --backoff-max-us N --hot-detection-enabled true|false\n"
@@ -494,6 +509,7 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     config.hot_access_probability = 0.90;
     config.duration_sec = 10;
     config.max_retries = 100;
+    config.sold_counter_mode = "global";
     config.algorithm = "baseline_occ";
     config.backoff_policy = "NO_BACKOFF";
     config.backoff_base_us = 10;
@@ -530,6 +546,7 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         else if (arg == "--hot-access-prob") config.hot_access_probability = std::stod(next());
         else if (arg == "--duration-sec") config.duration_sec = std::stoul(next());
         else if (arg == "--max-retries") config.max_retries = std::stoul(next());
+        else if (arg == "--sold-counter-mode") config.sold_counter_mode = next();
         else if (arg == "--algorithm") config.algorithm = next();
         else if (arg == "--backoff-policy") config.backoff_policy = next();
         else if (arg == "--backoff-base-us") config.backoff_base_us = std::stoul(next());
@@ -569,6 +586,9 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         config.arbitration_mode != "per_shard") {
         throw std::runtime_error("invalid --arbitration-mode: " + config.arbitration_mode);
     }
+    if (config.sold_counter_mode != "global" && config.sold_counter_mode != "per_product") {
+        throw std::runtime_error("invalid --sold-counter-mode: " + config.sold_counter_mode);
+    }
     if (config.hot_shards == 0) {
         config.hot_shards = 1;
     }
@@ -593,6 +613,7 @@ int main(int argc, char* argv[]) {
     output.add("hot_refresh_interval", (long long)config.hot_refresh_interval);
     output.add("arbitration_mode", config.arbitration_mode);
     output.add("hot_shards", (long long)config.hot_shards);
+    output.add("sold_counter_mode", config.sold_counter_mode);
     output.add("attempted_tx", (long long)result.attempted_tx);
     output.add("committed_tx", (long long)result.committed_tx);
     output.add("aborted_tx", (long long)result.aborted_tx);
@@ -629,7 +650,7 @@ int main(int argc, char* argv[]) {
     output.add("final_stock", (long long)result.final_stock);
     output.add("sold_count", (long long)result.sold_count);
     output.add("initial_stock", (long long)(config.num_products * kInitialStockPerProduct));
-    output.add("environment_scope", "VirtualBox + Ubuntu 22.04 + Soft-RoCE protocol-level prototype");
+    output.add("environment_scope", "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe protocol-level prototype");
     output.add("crash_recovery_supported", false);
 
     std::string json = output.build();

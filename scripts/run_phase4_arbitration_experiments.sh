@@ -34,6 +34,12 @@ for scenario in "${SCENARIOS[@]}"; do
           "$run_count" "$arbitration_mode" "$hot_shards" "$workload" "$threads" "$ratio_label" "$rep")
         run_dir="$RESULTS_DIR/$run_id"
         mkdir -p "$run_dir"
+        appendix_only=false
+        appendix_reason=""
+        if [[ "$threads" -gt 4 ]]; then
+          appendix_only=true
+          appendix_reason="oversubscription_threads_exceed_exposed_cores"
+        fi
 
         echo "Running $run_id"
         read -r -a workload_args <<< "$workload_config"
@@ -47,6 +53,7 @@ for scenario in "${SCENARIOS[@]}"; do
         bench_cmd+=(--algorithm hybrid_arbitration_occ --hot-detection-enabled true --hybrid-enabled true)
         bench_cmd+=(--hot-threshold 0.10 --hot-min-access 10 --hot-refresh-interval 64)
         bench_cmd+=(--arbitration-mode "$arbitration_mode" --hot-shards "$hot_shards")
+        bench_cmd+=(--sold-counter-mode global)
         bench_cmd+=(--threads "$threads" --write-ratio "$write_ratio" --duration-sec "$DURATION_SEC" --max-retries "$MAX_RETRIES")
         bench_cmd+=(--output-file "$app_json")
 
@@ -70,9 +77,12 @@ for scenario in "${SCENARIOS[@]}"; do
   "duration_sec": $DURATION_SEC,
   "max_retries": $MAX_RETRIES,
   "matrix": "phase4_arbitration_queue",
+  "appendix_only": $appendix_only,
+  "appendix_reason": "$appendix_reason",
   "arbitration_mode": "$arbitration_mode",
   "hot_shards": $hot_shards,
-  "environment": "VirtualBox + Ubuntu 22.04 + Soft-RoCE",
+  "sold_counter_mode": "global",
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
   "scope_note": "Protocol-level DSM/OCC evidence only; not hardware RNIC performance."
 }
 EOF

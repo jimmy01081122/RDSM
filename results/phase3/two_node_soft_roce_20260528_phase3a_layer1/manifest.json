@@ -1,0 +1,11 @@
+{
+  "phase": "phase3",
+  "run_id": "20260528_phase3a_layer1",
+  "server_host": "node1@192.168.56.101",
+  "server_ip": "192.168.56.101",
+  "rdma_device": "rxe0",
+  "sizes": "4096 65536",
+  "tests": "ibv_rc_pingpong ib_read_bw",
+  "lat_iters": 100,
+  "bw_duration_sec": 1
+}

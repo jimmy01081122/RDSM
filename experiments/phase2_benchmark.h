@@ -20,6 +20,7 @@ struct BenchmarkConfig {
     double hot_access_probability;
     uint32_t duration_sec;
     uint32_t max_retries;
+    std::string sold_counter_mode;  // global, per_product
 
     // Algorithm selection
     std::string algorithm;  // baseline_occ, backoff_occ, hot_detection_occ, hybrid_arbitration_occ

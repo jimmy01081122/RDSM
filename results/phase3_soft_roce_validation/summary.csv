@@ -1,10 +1,10 @@
-layer,operation,status,rows,size_range_bytes,success_count,failure_count,latency_us_p50,latency_us_p95,latency_us_p99,latency_us_max,bw_avg_mb_sec_mean,notes
-external_verbs_tool,ibv_rc_pingpong,not_collected,0,,0,0,,,,,,not present in current Phase 3 artifacts
-external_verbs_tool,ib_write_bw,success,7,8-65536,7,0,,,,,19.00,parsed from Phase 3 rerun perftest outputs
-external_verbs_tool,ib_read_bw,not_collected,0,,0,0,,,,,,not present in current Phase 3 artifacts
-external_verbs_tool,ib_write_lat,success,7,8-65536,7,0,,,87591.44,880421.60,,parsed from Phase 3 rerun perftest outputs
-external_verbs_tool,ib_read_lat,success,7,8-65536,7,0,,,139694.39,1000439.48,,parsed from Phase 3 rerun perftest outputs
-external_verbs_tool,ib_send_lat,success,7,8-65536,7,0,,,15829.41,36381.33,,parsed from Phase 3 rerun perftest outputs
-project_two_node_rdma_validation,RDMA_WRITE,not_implemented,0,,0,0,,,,,,two_node_rdma_validation executable is not present yet; no project wrapper READ/WRITE/CAS result exists
-project_two_node_rdma_validation,RDMA_READ,not_implemented,0,,0,0,,,,,,two_node_rdma_validation executable is not present yet; no project wrapper READ/WRITE/CAS result exists
-project_two_node_rdma_validation,RDMA_CAS,not_implemented,0,,0,0,,,,,,two_node_rdma_validation executable is not present yet; no project wrapper READ/WRITE/CAS result exists
+layer,operation,status,rows,size_range_bytes,success_count,failure_count,latency_us_p99_mean,latency_us_max,bw_avg_mb_sec_mean,notes
+external_verbs_tool,ibv_rc_pingpong,success,2,4096-65536,2,0,,,30.40,parsed from Phase 3/3a perftest outputs
+external_verbs_tool,ib_write_bw,success,7,8-65536,7,0,,,19.00,parsed from Phase 3/3a perftest outputs
+external_verbs_tool,ib_read_bw,success,2,4096-65536,2,0,,,37.19,parsed from Phase 3/3a perftest outputs
+external_verbs_tool,ib_write_lat,success,7,8-65536,7,0,87591.44,880421.60,,parsed from Phase 3/3a perftest outputs
+external_verbs_tool,ib_read_lat,success,7,8-65536,7,0,139694.39,1000439.48,,parsed from Phase 3/3a perftest outputs
+external_verbs_tool,ib_send_lat,success,7,8-65536,7,0,15829.41,36381.33,,parsed from Phase 3/3a perftest outputs
+project_two_node_rdma_validation,RDMA_WRITE,deferred,0,,0,0,,,,deferred: existing RDMA wrapper needs connection/MR/CQ setup work and should not block Phase 5
+project_two_node_rdma_validation,RDMA_READ,deferred,0,,0,0,,,,deferred: existing RDMA wrapper needs connection/MR/CQ setup work and should not block Phase 5
+project_two_node_rdma_validation,RDMA_CAS,deferred,0,,0,0,,,,deferred: existing RDMA wrapper needs connection/MR/CQ setup work and should not block Phase 5

@@ -1,0 +1,18 @@
+{
+  "run_id": "716_phase4b_global_sold_per_object_s1_high_hot16_write100_t8_w1p00_rep1",
+  "timestamp": "2026-05-28T07:10:58Z",
+  "algorithm": "hybrid_arbitration_occ",
+  "workload": "high_hot16_write100",
+  "thread_count": 8,
+  "write_ratio": 1.00,
+  "duration_sec": 1,
+  "max_retries": 100,
+  "matrix": "phase4b_cleanup",
+  "appendix_only": true,
+  "appendix_reason": "oversubscription_threads_exceed_exposed_cores",
+  "arbitration_mode": "per_object",
+  "hot_shards": 1,
+  "sold_counter_mode": "global",
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Cleanup/isolation validation only; not final performance claim."
+}

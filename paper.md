@@ -32,9 +32,11 @@ The most reliable Phase 2 signal is the combination of committed tx/sec, retry p
 
 ## 6. Phase 3: Soft-RoCE Transport Validation and Its Limits
 
-Phase 3 validates two-node Soft-RoCE verbs functionality between node2 and node1 using perftest READ/WRITE/SEND/BW sweeps. It confirms that RC QP setup, GID exchange, CQ completion, and transport-level operations work across two Linux VMs. It does not support hardware RDMA performance claims or stable latency claims.
+Phase 3 validates two-node Soft-RoCE verbs functionality between node2 and node1 using external verbs tools, including `ibv_rc_pingpong`, RDMA WRITE/READ bandwidth, and RDMA WRITE/READ/SEND latency sweeps. It confirms that RC QP setup, GID exchange, CQ completion, and transport-level operations work across two Linux VMs. It does not support hardware RDMA performance claims or stable latency claims.
 
 High latency jitter in the virtualized Soft-RoCE/`rdma_rxe` environment justifies keeping transport validation separate from protocol evaluation.
+
+Project-level `two_node_rdma_validation` is deferred because the current wrapper would require non-trivial RDMA CM, memory-region exchange, and CQ validation work. This is recorded as future work and should not block latency sampling or adaptive-routing research.
 
 ## 7. Phase 4: Scalable Arbitration Queues
 
@@ -43,6 +45,14 @@ Phase 4 adds arbitration modes behind `--arbitration-mode=global|per_object|per_
 The implementation now records queue-wait, queue-length, and service-time samples for hot arbitration. The initial short matrix in `results/phase4_arbitration/` is a smoke/discovery dataset only; publication claims require longer duration and repetitions.
 
 The intended evaluation questions are whether global arbitration over-serializes unrelated hot objects, whether per-object/per-shard modes reduce queue wait under broad hot sets, where shard-count improvements saturate, and whether arbitration hurts low-contention or read-heavy workloads.
+
+During Phase 4 sanity checking, the initial queue-based arbitration prototype exposed an important synchronization issue: hot arbitration and cold OCC initially used inconsistent data-locking disciplines. The hot path used object-specific locks, while parts of the OCC path still relied on the old global mutation mutex. The implementation was fixed so both OCC and arbitration acquire object-specific data locks in deterministic object-id order. This makes hot/cold path comparisons meaningful and avoids path-specific synchronization artifacts.
+
+## 7.1 Phase 4b: Cleanup and Isolation Validation
+
+Phase 4b is a cleanup/isolation validation step, not a new performance claim. It adds `--sold-counter-mode=global|per_product`. The global mode preserves the original shared `sold_count` object and represents an application-level global metadata bottleneck. The per-product mode uses one sold counter per product so that broad hot-product workloads can better isolate arbitration queue behavior.
+
+This distinction matters because per-object or per-shard arbitration can only reduce unrelated-object serialization when the application data model does not reintroduce a shared object in every transaction. The final paper should discuss this as a systems lesson rather than presenting the short Phase 4b discovery rows as final performance evidence.
 
 ## 8. Phase 5: Latency Sampling and Adaptive Routing
 
@@ -61,7 +71,9 @@ Transactions should enter arbitration only when the estimated OCC cost exceeds a
 
 ## 9. Evaluation
 
-The final evaluation should include correctness invariants, focused contention workloads, application-like workloads, arbitration queue comparison, adaptive routing under steady workloads, adaptive routing under phase-change workloads, two-node Soft-RoCE validation, and statistical reporting.
+The final evaluation should include correctness invariants, focused synthetic contention workloads, application-like workloads, arbitration queue comparison, adaptive routing under steady workloads, adaptive routing under phase-change workloads, two-node Soft-RoCE validation, and statistical reporting.
+
+Focused synthetic workloads and application-like workloads should be reported in separate sections or figures. Do not use a combined universal ranking table across unrelated workload families.
 
 For final benchmark configurations, report mean, standard deviation, 95% confidence interval, repetition count, warmup duration, and measurement duration. Do not rank algorithms from one short run.
 

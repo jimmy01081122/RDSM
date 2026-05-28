@@ -1,0 +1,4 @@
+  local address:  LID 0x0000, QPN 0x000011, PSN 0x91617a, GID ::ffff:192.168.56.102
+  remote address: LID 0x0000, QPN 0x000011, PSN 0x55644c, GID ::ffff:192.168.56.101
+13107200 bytes in 0.22 seconds = 471.31 Mbit/sec
+100 iters in 0.22 seconds = 2224.83 usec/iter

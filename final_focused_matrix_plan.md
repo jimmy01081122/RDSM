@@ -22,7 +22,7 @@ repetitions = 10
 
 Report mean, standard deviation, 95% confidence interval, repetition count, warmup duration, and measurement duration.
 
-## Main-Text Workloads
+## Main-Text Synthetic Focused Workloads
 
 ```text
 low_uniform_read95
@@ -31,11 +31,20 @@ mixed_hot4_write50
 high_hot1_write100
 high_hot16_write100
 zipf99_write100
+```
+
+These workloads answer mechanism questions about contention shape, queueing, hot-path routing, and OCC conflict symptoms.
+
+## Main-Text Application-Like Workloads
+
+```text
 flash_sale_spike
 ticket_booking_hot_event
 ad_budget_read_heavy_dashboard
 long_tail_marketplace_zipf
 ```
+
+These workloads should be reported in a separate figure/table from synthetic workloads. Do not create a combined universal ranking table.
 
 ## Algorithms / Modes
 
@@ -57,6 +66,33 @@ per_shard hot_shards=4
 per_shard hot_shards=8
 per_shard hot_shards=16
 ```
+
+Sold counter isolation:
+
+```text
+sold_counter_mode=global       # global metadata bottleneck
+sold_counter_mode=per_product  # isolates arbitration queue behavior
+```
+
+Use `per_product` for arbitration-isolation plots and `global` when discussing application-level global metadata bottlenecks.
+
+## Appendix Metadata
+
+All runner manifests and summaries should include:
+
+```text
+appendix_only
+appendix_reason
+```
+
+Rows with `threads > 4` should set:
+
+```text
+appendix_only=true
+appendix_reason=oversubscription_threads_exceed_exposed_cores
+```
+
+Main plotting scripts should default to `appendix_only == false`. Appendix plots may include oversubscription rows.
 
 Adaptive routing should be added only after Phase 5 latency sampling and queue-cost calibration are implemented.
 

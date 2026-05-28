@@ -1,0 +1,18 @@
+{
+  "run_id": "723_phase4b_per_product_sold_per_shard_s8_high_hot16_write100_t4_w1p00_rep1",
+  "timestamp": "2026-05-28T07:11:06Z",
+  "algorithm": "hybrid_arbitration_occ",
+  "workload": "high_hot16_write100",
+  "thread_count": 4,
+  "write_ratio": 1.00,
+  "duration_sec": 1,
+  "max_retries": 100,
+  "matrix": "phase4b_cleanup",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "arbitration_mode": "per_shard",
+  "hot_shards": 8,
+  "sold_counter_mode": "per_product",
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Cleanup/isolation validation only; not final performance claim."
+}

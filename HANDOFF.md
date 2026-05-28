@@ -17,6 +17,8 @@ Last updated: 2026-05-27 UTC
 - Phase 4 preliminary results: `results/phase4_arbitration/`
 - Phase 4 discovery summary: `results/phase4_arbitration/discovery_summary.md`
 - Phase 4 sanity check: `results/phase4_arbitration/sanity_check.md`
+- Phase 4b cleanup results: `results/phase4b_cleanup/`
+- Phase 4b cleanup summary: `results/phase4b_cleanup/phase4b_cleanup_summary.md`
 - Phase 3 validation summary bundle: `results/phase3_soft_roce_validation/`
 - Paper skeleton: `paper.md`
 - Final focused matrix plan: `final_focused_matrix_plan.md`
@@ -46,6 +48,8 @@ Last updated: 2026-05-27 UTC
 - Phase 3 parser: `scripts/parse_phase3_results.py`
 - Phase 4 arbitration modes in `phase2_dsm_benchmark`: `global`, `per_object`, `per_shard`
 - Phase 4 focused runner: `scripts/run_phase4_arbitration_experiments.sh`
+- Phase 4b cleanup runner: `scripts/run_phase4b_cleanup_experiments.sh`
+- Sold counter mode: `--sold-counter-mode global|per_product`
 - Phase 4 metrics: queue wait p50/p95/p99/max, queue length p50/p95/p99, service time p50/p95/p99/max
 - Full Chinese report rewritten in `report.md`
 
@@ -83,6 +87,10 @@ cd /home/node1/RDSM
 python3 scripts/parse_phase2_results.py
 python3 scripts/parse_phase3_results.py
 ```
+
+Phase 3a Layer 1 cleanup has also collected `ibv_rc_pingpong` and `ib_read_bw` rows in `results/phase3/two_node_soft_roce_20260528_phase3a_layer1/`.
+
+Project-level `two_node_rdma_validation` is deferred. The current `RDMAConnection` wrapper is not complete enough for minimal READ/WRITE/CAS validation without non-trivial RDMA CM, MR exchange, and CQ setup work.
 
 `scripts/parse_phase2_results.py` regenerates the older English Phase 2 report at `results/phase2/phase2_report.md`. The root `report.md` is reserved for the Chinese full Phase 2 + Phase 3 report.
 
@@ -157,6 +165,16 @@ RESULTS_DIR=./results/phase4_arbitration \
 
 Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the current checked-in dataset is only a smoke/discovery matrix.
 
+Phase 4b cleanup/isolation run:
+
+```bash
+RESULTS_DIR=./results/phase4b_cleanup DURATION_SEC=1 REPETITIONS=1 \
+  ./scripts/run_phase4b_cleanup_experiments.sh
+
+RESULTS_DIR=./results/phase4b_cleanup \
+  python3 scripts/parse_phase2_results.py
+```
+
 ## Current Dataset
 
 - Total parsed runs: 272
@@ -171,6 +189,8 @@ Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the c
 - Phase 3 transport evidence: RC QP metadata, Ethernet link type, GID index 1, local GID containing `192.168.56.102`, remote GID containing `192.168.56.101`
 - Phase 4 preliminary rows: 40
 - Phase 4 correctness status: PASS after object-locking fix; smoke/discovery rows preserve invariants and duplicate-commit checks
+- Phase 4b cleanup rows: 24
+- Phase 4b correctness status: PASS; invariant violations 0, duplicate commits 0
 
 ## Interpretation Notes
 
@@ -190,6 +210,7 @@ Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the c
 - Hybrid arbitration uses a coarse mutation lock; future work should shard by hot object or hot-object group.
 - Phase 4 adds queue-level arbitration, but the benchmark is still a local prototype and still has shared application objects such as `sold_count`; do not treat short Phase 4 numbers as final scalability results.
 - The first Phase 4 per-object/per-shard attempt exposed a lock-discipline bug between hot arbitration and OCC cold path. It was fixed by using deterministic per-object data locks in both paths before regenerating the checked-in Phase 4 summaries.
+- `sold_counter_mode=global` intentionally preserves the application-level shared metadata bottleneck. `sold_counter_mode=per_product` is only for arbitration-isolation validation.
 - Tail latency is approximated from aggregate latency, not sampled percentiles.
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.

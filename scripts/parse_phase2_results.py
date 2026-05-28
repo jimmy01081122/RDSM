@@ -106,8 +106,9 @@ def stats(rows, field):
 def write_csv(results_dir, rows):
     fields = [
         "run_id", "timestamp", "algorithm", "workload", "application_case", "thread_count", "write_ratio",
-        "duration_sec", "matrix", "access_pattern", "hot_access_probability", "hot_refresh_interval",
-        "arbitration_mode", "hot_shards",
+        "duration_sec", "matrix", "appendix_only", "appendix_reason", "access_pattern",
+        "hot_access_probability", "hot_refresh_interval",
+        "arbitration_mode", "hot_shards", "sold_counter_mode",
         "attempted_tx", "committed_tx", "aborted_tx", "business_abort_tx",
         "retry_count", "lock_fail_count", "validation_fail_count", "abort_rate",
         "retry_per_commit", "committed_tx_per_sec", "latency_us_p50", "latency_us_p95",

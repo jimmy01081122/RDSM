@@ -17,14 +17,15 @@
     "ibv": "rxe0 present; active_mtu=1024 (3); link_layer=Ethernet"
   },
   "artifacts": {
-    "raw_run": "results/phase3/two_node_soft_roce_20260527_225225",
-    "source_summary": "results/phase3/two_node_soft_roce_summary.csv",
-    "legacy_stat_rows": 4,
-    "phase3_rerun_rows": 28
+    "raw_runs": [
+      "results/phase3/two_node_soft_roce_20260527_225225",
+      "results/phase3/two_node_soft_roce_20260528_phase3a_layer1"
+    ],
+    "phase3_rerun_rows": 32,
+    "legacy_stat_rows": 4
   },
-  "missing_items": [
-    "ibv_rc_pingpong was not collected in the current artifacts.",
-    "ib_read_bw was not collected in the current artifacts.",
-    "project two_node_rdma_validation READ/WRITE/CAS wrapper is not implemented yet."
-  ]
+  "two_node_rdma_validation": {
+    "status": "deferred",
+    "reason": "existing RDMAConnection wrapper is not complete enough for minimal READ/WRITE/CAS validation without RDMA CM/MR/CQ setup work"
+  }
 }

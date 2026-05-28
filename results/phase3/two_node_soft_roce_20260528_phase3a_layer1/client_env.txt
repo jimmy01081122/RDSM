@@ -1,0 +1,38 @@
+hostname: node2
+date: 2026-05-28T07:09:36+00:00
+server_host: node1@192.168.56.101
+server_ip: 192.168.56.101
+rdma_dev: rxe0
+
+===== ip =====
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+enp0s3           UP             10.0.2.15/24 metric 100 fd17:625c:f037:2:a00:27ff:fe5d:5463/64 fe80::a00:27ff:fe5d:5463/64 
+enp0s8           UP             192.168.56.102/24 fe80::a00:27ff:fea3:5222/64 
+
+===== rdma link =====
+link rxe0/1 state ACTIVE physical_state LINK_UP netdev enp0s8 
+
+===== ibv_devices =====
+    device          	   node GUID
+    ------          	----------------
+    rxe0            	0a0027fffea35222
+
+===== ibv_devinfo =====
+hca_id:	rxe0
+	transport:			InfiniBand (0)
+	fw_ver:				0.0.0
+	node_guid:			0a00:27ff:fea3:5222
+	sys_image_guid:			0a00:27ff:fea3:5222
+	vendor_id:			0xffffff
+	vendor_part_id:			0
+	hw_ver:				0x0
+	phys_port_cnt:			1
+		port:	1
+			state:			PORT_ACTIVE (4)
+			max_mtu:		4096 (5)
+			active_mtu:		1024 (3)
+			sm_lid:			0
+			port_lid:		0
+			port_lmc:		0x00
+			link_layer:		Ethernet
+

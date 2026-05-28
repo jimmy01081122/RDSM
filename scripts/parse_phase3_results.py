@@ -40,6 +40,12 @@ def parse_common(stdout):
         row["local_qpn"] = qpn[0]
     if len(qpn) > 1:
         row["remote_qpn"] = qpn[1]
+
+    pingpong_gids = re.findall(r"GID\s+(::ffff:[0-9.]+)", stdout)
+    if pingpong_gids:
+        row["local_gid"] = pingpong_gids[0]
+    if len(pingpong_gids) > 1:
+        row["remote_gid"] = pingpong_gids[1]
     return row
 
 
@@ -75,6 +81,16 @@ def parse_perftest_stdout(stdout):
             "bw_peak_mb_sec": float(bandwidth.group(3)),
             "bw_avg_mb_sec": float(bandwidth.group(4)),
             "msg_rate_mpps": float(bandwidth.group(5)),
+        })
+
+    pingpong_bw = re.search(r"(\d+)\s+bytes in\s+([0-9.]+)\s+seconds\s+=\s+([0-9.]+)\s+Mbit/sec", stdout)
+    pingpong_lat = re.search(r"(\d+)\s+iters in\s+([0-9.]+)\s+seconds\s+=\s+([0-9.]+)\s+usec/iter", stdout)
+    if pingpong_bw and pingpong_lat and "lat_avg_us" not in row and "bw_avg_mb_sec" not in row:
+        row.update({
+            "payload_size_bytes_observed": int(int(pingpong_bw.group(1)) / int(pingpong_lat.group(1))),
+            "iterations": int(pingpong_lat.group(1)),
+            "lat_avg_us": float(pingpong_lat.group(3)),
+            "bw_avg_mb_sec": float(pingpong_bw.group(3)) / 8.0,
         })
     return row
 

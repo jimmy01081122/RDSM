@@ -1,0 +1,18 @@
+{
+  "run_id": "703_phase4b_global_sold_per_object_s1_mixed_hot4_write50_t4_w0p50_rep1",
+  "timestamp": "2026-05-28T07:10:45Z",
+  "algorithm": "hybrid_arbitration_occ",
+  "workload": "mixed_hot4_write50",
+  "thread_count": 4,
+  "write_ratio": 0.50,
+  "duration_sec": 1,
+  "max_retries": 100,
+  "matrix": "phase4b_cleanup",
+  "appendix_only": false,
+  "appendix_reason": "",
+  "arbitration_mode": "per_object",
+  "hot_shards": 1,
+  "sold_counter_mode": "global",
+  "environment": "virtualized Linux + Ubuntu 22.04 + Soft-RoCE/rdma_rxe",
+  "scope_note": "Cleanup/isolation validation only; not final performance claim."
+}

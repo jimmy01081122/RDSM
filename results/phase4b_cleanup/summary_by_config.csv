@@ -1,0 +1,5 @@
+algorithm,workload,thread_count,write_ratio,runs,committed_tx_per_sec_mean,abort_rate_mean,retry_per_commit_mean,lock_fail_count_mean,validation_fail_count_mean,latency_us_p50_mean,hot_path_ratio_mean,server_queue_wait_us_p50_mean,server_queue_wait_us_p95_mean,server_queue_wait_us_p99_mean,queue_length_p95_mean,service_time_us_p95_mean
+hybrid_arbitration_occ,high_hot16_write100,4,1.0,6,1036891.6666666666,0.0,0.0,0,0,3.69,1.0,0.0,1.0,110.66666666666667,2.3333333333333335,1.0
+hybrid_arbitration_occ,high_hot16_write100,8,1.0,6,1419496.6666666667,0.0,0.0,0,0,5.4399999999999995,1.0,0.0,0.5,72.16666666666667,5.833333333333333,1.0
+hybrid_arbitration_occ,mixed_hot4_write50,4,0.5,6,710243.3333333334,0.0,0.0,0,644.3333333333334,4.723333333333334,0.7816666666666667,0.0,1.0,145.66666666666666,2.6666666666666665,1.0
+hybrid_arbitration_occ,mixed_hot4_write50,8,0.5,6,1322745.0,0.0,0.0,0,202,5.566666666666666,0.7733333333333333,0.0,0.5,46.666666666666664,7.0,1.0

@@ -9,8 +9,8 @@ The validation uses perftest RC queue-pair tests over `rxe0`: RDMA WRITE latency
 ## Artifacts
 
 - Summary CSV: `results/phase3/two_node_soft_roce_summary.csv`
-- Parsed successful rows: 32
-- Phase 3 rerun rows: 28
+- Parsed successful rows: 36
+- Phase 3 rerun rows: 32
 - Phase 1 `/stat` rows: 4
 - Failed or unparsable rows: 0
 
@@ -22,10 +22,12 @@ Successful rows expose RC transport metadata: `Transport type: IB`, `Connection 
 
 | Test | Rows | Size range | Mean latency us | Mean p99 us | Mean BW MB/s | Mean MsgRate Mpps |
 |---|---:|---:|---:|---:|---:|---:|
+| ib_read_bw | 2 | 4096-65536 | 0.00 | 0.00 | 37.19 | 0.005014 |
 | ib_read_lat | 7 | 8-65536 | 6919.06 | 139694.39 | 0.00 | 0.000000 |
 | ib_send_lat | 7 | 8-65536 | 822.27 | 15829.41 | 0.00 | 0.000000 |
 | ib_write_bw | 7 | 8-65536 | 0.00 | 0.00 | 19.00 | 0.020198 |
 | ib_write_lat | 7 | 8-65536 | 2666.67 | 87591.44 | 0.00 | 0.000000 |
+| ibv_rc_pingpong | 2 | 4096-65536 | 3273.84 | 0.00 | 30.40 | 0.000000 |
 
 ## Legacy `/stat` Summary
 

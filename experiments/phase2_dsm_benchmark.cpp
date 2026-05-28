@@ -10,8 +10,10 @@
 #include <iostream>
 #include <mutex>
 #include <random>
+#include <set>
 #include <stdexcept>
 #include <sstream>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -69,6 +71,30 @@ uint64_t sold_object_id(const BenchmarkConfig& config, uint64_t product_id) {
         return base + product_id;
     }
     return base;
+}
+
+LatencySample base_latency_sample(const BenchmarkConfig& config,
+                                  uint64_t tx_id,
+                                  uint32_t thread_id,
+                                  std::string_view path_type) {
+    LatencySample sample;
+    sample.tx_id = tx_id;
+    sample.thread_id = thread_id;
+    sample.workload_name = config.workload_name;
+    sample.application_case = config.application_case;
+    sample.algorithm = config.algorithm;
+    sample.arbitration_mode = config.arbitration_mode;
+    sample.hot_shards = config.hot_shards;
+    sample.sold_counter_mode = config.sold_counter_mode;
+    sample.path_type = path_type;
+    sample.appendix_only = config.appendix_only;
+    sample.appendix_reason = config.appendix_reason;
+    sample.tx_start_ns = LatencySampler::now_ns();
+    return sample;
+}
+
+uint32_t order_object_count(const InventoryWorkload::OrderInfo& order) {
+    return order.is_read_only ? 1 : 3;
 }
 
 uint64_t normalized_hot_shards(const BenchmarkConfig& config) {
@@ -193,6 +219,8 @@ BenchmarkRunner::BenchmarkRunner(const BenchmarkConfig& config)
     store_ = std::make_unique<DSMObjectStore>();
     engine_ = std::make_unique<OCCEngine>(store_.get());
     workload_ = std::make_unique<InventoryWorkload>(config_, store_.get(), engine_.get());
+    latency_sampler_ = std::make_unique<LatencySampler>(
+        config_.latency_sampling_mode, config_.latency_sample_size);
 }
 
 BenchmarkRunner::~BenchmarkRunner() = default;
@@ -253,12 +281,18 @@ static bool should_refresh_hot_objects(const BenchmarkConfig& config, uint64_t l
 
 static int run_server_arbitrated_order(const BenchmarkConfig& config,
                                        DSMObjectStore* store,
+                                       LatencySampler* sampler,
+                                       LatencySample sample,
                                        const InventoryWorkload::OrderInfo& order,
-                                       uint64_t start_us) {
+                                       uint64_t start_us,
+                                       bool hot_candidate) {
     auto stats = store->get_global_stats();
     stats->attempted_tx++;
     stats->hot_path_tx++;
     stats->server_arbitrated_tx++;
+    sample.objects_touched = order_object_count(order);
+    sample.hot_objects_touched = hot_candidate ? 1 : 0;
+    sample.route_decision_ns = sample.route_decision_ns ? sample.route_decision_ns : LatencySampler::now_ns();
 
     auto& queue_depth = selected_queue_depth(config, store, order.product_id);
     uint64_t queue_length = queue_depth.fetch_add(1);
@@ -266,9 +300,11 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     update_atomic_max(stats->server_queue_length_max, queue_length);
 
     const uint64_t wait_start_us = OCCEngine::get_time_us();
+    sample.queue_enter_ns = LatencySampler::now_ns();
     std::unique_lock<std::mutex> arbitration_lock(
         selected_arbitration_mutex(config, store, order.product_id));
     queue_depth.fetch_sub(1);
+    sample.queue_leave_ns = LatencySampler::now_ns();
     const uint64_t wait_us = OCCEngine::get_time_us() - wait_start_us;
     stats->server_queue_wait_total_us += wait_us;
     stats->server_queue_wait_count++;
@@ -276,6 +312,7 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     store->record_queue_wait_sample(wait_us);
 
     const uint64_t service_start_us = OCCEngine::get_time_us();
+    sample.commit_start_ns = LatencySampler::now_ns();
 
     std::vector<std::unique_lock<std::mutex>> object_locks;
     object_locks = lock_order_objects(store, {
@@ -294,9 +331,14 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
         stats->server_service_time_count++;
         update_atomic_max(stats->server_service_time_max_us, service_us);
         store->record_service_time_sample(service_us);
+        sample.commit_done_ns = LatencySampler::now_ns();
+        sample.tx_end_ns = sample.commit_done_ns;
+        sample.final_status = "internal_error";
+        if (sampler) sampler->record(sample);
         return -1;
     }
 
+    sample.read_phase_done_ns = LatencySampler::now_ns();
     if (order.is_read_only) {
         stats->committed_tx++;
         add_latency(stats, OCCEngine::get_time_us() - start_us);
@@ -305,6 +347,10 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
         stats->server_service_time_count++;
         update_atomic_max(stats->server_service_time_max_us, service_us);
         store->record_service_time_sample(service_us);
+        sample.commit_done_ns = LatencySampler::now_ns();
+        sample.tx_end_ns = sample.commit_done_ns;
+        sample.final_status = "committed";
+        if (sampler) sampler->record(sample);
         return 0;
     }
 
@@ -315,6 +361,10 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
         stats->server_service_time_count++;
         update_atomic_max(stats->server_service_time_max_us, service_us);
         store->record_service_time_sample(service_us);
+        sample.commit_done_ns = LatencySampler::now_ns();
+        sample.tx_end_ns = sample.commit_done_ns;
+        sample.final_status = "business_abort";
+        if (sampler) sampler->record(sample);
         return -1;
     }
 
@@ -335,18 +385,29 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     stats->server_service_time_count++;
     update_atomic_max(stats->server_service_time_max_us, service_us);
     store->record_service_time_sample(service_us);
+    sample.commit_done_ns = LatencySampler::now_ns();
+    sample.tx_end_ns = sample.commit_done_ns;
+    sample.final_status = "committed";
+    if (sampler) sampler->record(sample);
     return 0;
 }
 
 static void run_occ_order(const BenchmarkConfig& config,
                           DSMObjectStore* store,
                           OCCEngine* engine,
-                          const InventoryWorkload::OrderInfo& order) {
+                          LatencySampler* sampler,
+                          LatencySample sample,
+                          const InventoryWorkload::OrderInfo& order,
+                          bool hot_candidate) {
     BackoffConfig backoff_config{parse_backoff_policy(config.backoff_policy),
                                  config.backoff_base_us,
                                  config.backoff_max_us,
                                  config.max_retries};
     BackoffManager backoff(backoff_config);
+
+    sample.objects_touched = order_object_count(order);
+    sample.hot_objects_touched = hot_candidate ? 1 : 0;
+    sample.route_decision_ns = sample.route_decision_ns ? sample.route_decision_ns : LatencySampler::now_ns();
 
     for (uint32_t retry = 0; retry <= config.max_retries; ++retry) {
         Transaction tx;
@@ -365,6 +426,11 @@ static void run_occ_order(const BenchmarkConfig& config,
             engine->read_object(tx, balance_obj_id, balance_value, balance_version);
             if (stock_value == 0 || balance_value < order.price) {
                 store->get_global_stats()->business_abort_tx++;
+                sample.read_phase_done_ns = LatencySampler::now_ns();
+                sample.tx_end_ns = sample.read_phase_done_ns;
+                sample.retry_count = retry;
+                sample.final_status = "business_abort";
+                if (sampler) sampler->record(sample);
                 return;
             }
             engine->read_object(tx, sold_obj_id, sold_value, sold_version);
@@ -372,19 +438,36 @@ static void run_occ_order(const BenchmarkConfig& config,
             engine->write_object(tx, balance_obj_id, balance_value - order.price);
             engine->write_object(tx, sold_obj_id, sold_value + 1);
         }
+        sample.read_phase_done_ns = LatencySampler::now_ns();
 
+        sample.commit_start_ns = LatencySampler::now_ns();
         if (engine->commit_transaction(tx) == 0) {
             store->get_global_stats()->cold_path_tx++;
+            sample.commit_done_ns = LatencySampler::now_ns();
+            sample.tx_end_ns = sample.commit_done_ns;
+            sample.retry_count = retry;
+            sample.final_status = "committed";
+            if (sampler) sampler->record(sample);
             return;
         }
+        sample.commit_done_ns = LatencySampler::now_ns();
 
         store->get_global_stats()->retry_count++;
+        if (tx.abort_reason == ABORT_LOCK_FAIL) {
+            sample.lock_fail_count_for_tx++;
+        } else if (tx.abort_reason == ABORT_VALIDATION_FAIL) {
+            sample.validation_fail_count_for_tx++;
+        }
         auto obj_stats = store->get_object_stats(stock_obj_id);
         if (obj_stats) {
             obj_stats->abort_count++;
         }
         if (retry == config.max_retries) {
             store->get_global_stats()->aborted_tx++;
+            sample.tx_end_ns = LatencySampler::now_ns();
+            sample.retry_count = retry;
+            sample.final_status = "max_retry_abort";
+            if (sampler) sampler->record(sample);
             return;
         }
         backoff.backoff(tx.abort_reason, retry);
@@ -402,6 +485,7 @@ int BenchmarkRunner::run_benchmark() {
         threads.emplace_back([this, t, end_time]() {
             uint64_t local_tx_count = 0;
             while (std::chrono::steady_clock::now() < end_time) {
+                const uint64_t sampled_tx_id = latency_sampler_->next_tx_id();
                 InventoryWorkload::OrderInfo order = workload_->generate_order(t);
                 local_tx_count++;
                 if (should_refresh_hot_objects(config_, local_tx_count)) {
@@ -414,9 +498,15 @@ int BenchmarkRunner::run_benchmark() {
                 }
 
                 if (config_.hybrid_enabled && hot_candidate) {
-                    run_server_arbitrated_order(config_, store_.get(), order, OCCEngine::get_time_us());
+                    auto sample = base_latency_sample(config_, sampled_tx_id, t, "hot_arbitration");
+                    sample.route_decision_ns = LatencySampler::now_ns();
+                    run_server_arbitrated_order(config_, store_.get(), latency_sampler_.get(), sample,
+                                                order, OCCEngine::get_time_us(), hot_candidate);
                 } else {
-                    run_occ_order(config_, store_.get(), engine_.get(), order);
+                    auto sample = base_latency_sample(config_, sampled_tx_id, t, "cold_occ");
+                    sample.route_decision_ns = LatencySampler::now_ns();
+                    run_occ_order(config_, store_.get(), engine_.get(), latency_sampler_.get(), sample,
+                                  order, hot_candidate);
                 }
             }
         });
@@ -426,6 +516,9 @@ int BenchmarkRunner::run_benchmark() {
         thread.join();
     }
     refresh_hot_objects(config_, store_.get());
+    if (latency_sampler_ && !config_.latency_output.empty()) {
+        latency_sampler_->write_csv(config_.latency_output);
+    }
     return 0;
 }
 
@@ -446,6 +539,9 @@ RunResult BenchmarkRunner::get_result() {
         result.latency_p50_us = static_cast<double>(stats->total_commit_latency_us) / stats->committed_tx;
         result.latency_p95_us = result.latency_p50_us * 1.5;
         result.latency_p99_us = result.latency_p50_us * 2.0;
+    }
+    if (latency_sampler_) {
+        result.latency_summary = latency_sampler_->summary();
     }
 
     uint64_t hot_count = 0;
@@ -490,6 +586,7 @@ static void print_help(const char* argv0) {
               << "--access-pattern uniform|zipfian_0.8|zipfian_0.99\n"
               << "--hot-products N --hot-access-prob P --duration-sec N --max-retries N\n"
               << "--sold-counter-mode global|per_product\n"
+              << "--latency-sampling off|full|reservoir --latency-sample-size N --latency-output FILE\n"
               << "--algorithm baseline_occ|backoff_occ|hot_detection_occ|hybrid_arbitration_occ\n"
               << "--backoff-policy NO_BACKOFF|FIXED_BACKOFF|EXPONENTIAL_BACKOFF|RANDOMIZED_EXPONENTIAL_BACKOFF|CONTENTION_AWARE_BACKOFF\n"
               << "--backoff-base-us N --backoff-max-us N --hot-detection-enabled true|false\n"
@@ -510,6 +607,12 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     config.duration_sec = 10;
     config.max_retries = 100;
     config.sold_counter_mode = "global";
+    config.workload_name = "unspecified";
+    config.appendix_only = false;
+    config.appendix_reason = "";
+    config.latency_sampling_mode = LatencySamplingMode::Reservoir;
+    config.latency_sample_size = 100000;
+    config.latency_output = "";
     config.algorithm = "baseline_occ";
     config.backoff_policy = "NO_BACKOFF";
     config.backoff_base_us = 10;
@@ -533,6 +636,9 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
             }
             return argv[++i];
         };
+        auto value_after_equals = [&](const std::string& prefix) -> std::string {
+            return arg.substr(prefix.size());
+        };
 
         if (arg == "--help" || arg == "-h") {
             print_help(argv[0]);
@@ -547,6 +653,15 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         else if (arg == "--duration-sec") config.duration_sec = std::stoul(next());
         else if (arg == "--max-retries") config.max_retries = std::stoul(next());
         else if (arg == "--sold-counter-mode") config.sold_counter_mode = next();
+        else if (arg == "--workload-name") config.workload_name = next();
+        else if (arg == "--appendix-only") config.appendix_only = to_bool(next());
+        else if (arg == "--appendix-reason") config.appendix_reason = next();
+        else if (arg == "--latency-sampling") config.latency_sampling_mode = LatencySampler::parse_mode(next());
+        else if (arg.rfind("--latency-sampling=", 0) == 0) config.latency_sampling_mode = LatencySampler::parse_mode(value_after_equals("--latency-sampling="));
+        else if (arg == "--latency-sample-size") config.latency_sample_size = std::stoul(next());
+        else if (arg.rfind("--latency-sample-size=", 0) == 0) config.latency_sample_size = std::stoul(value_after_equals("--latency-sample-size="));
+        else if (arg == "--latency-output") config.latency_output = next();
+        else if (arg.rfind("--latency-output=", 0) == 0) config.latency_output = value_after_equals("--latency-output=");
         else if (arg == "--algorithm") config.algorithm = next();
         else if (arg == "--backoff-policy") config.backoff_policy = next();
         else if (arg == "--backoff-base-us") config.backoff_base_us = std::stoul(next());
@@ -607,6 +722,7 @@ int main(int argc, char* argv[]) {
 
     JSONBuilder output;
     output.add("algorithm", config.algorithm);
+    output.add("workload_name", config.workload_name);
     output.add("application_case", config.application_case);
     output.add("access_pattern", config.access_pattern);
     output.add("hot_access_probability", config.hot_access_probability);
@@ -614,6 +730,8 @@ int main(int argc, char* argv[]) {
     output.add("arbitration_mode", config.arbitration_mode);
     output.add("hot_shards", (long long)config.hot_shards);
     output.add("sold_counter_mode", config.sold_counter_mode);
+    output.add("appendix_only", config.appendix_only);
+    output.add("appendix_reason", config.appendix_reason);
     output.add("attempted_tx", (long long)result.attempted_tx);
     output.add("committed_tx", (long long)result.committed_tx);
     output.add("aborted_tx", (long long)result.aborted_tx);
@@ -627,6 +745,28 @@ int main(int argc, char* argv[]) {
     output.add("latency_us_p50", result.latency_p50_us);
     output.add("latency_us_p95", result.latency_p95_us);
     output.add("latency_us_p99", result.latency_p99_us);
+    output.add("tx_latency_us_p50", result.latency_summary.tx_latency_us_p50);
+    output.add("tx_latency_us_p95", result.latency_summary.tx_latency_us_p95);
+    output.add("tx_latency_us_p99", result.latency_summary.tx_latency_us_p99);
+    output.add("tx_latency_us_max", result.latency_summary.tx_latency_us_max);
+    output.add("committed_tx_latency_us_p50", result.latency_summary.committed_tx_latency_us_p50);
+    output.add("committed_tx_latency_us_p95", result.latency_summary.committed_tx_latency_us_p95);
+    output.add("committed_tx_latency_us_p99", result.latency_summary.committed_tx_latency_us_p99);
+    output.add("abort_tx_latency_us_p50", result.latency_summary.abort_tx_latency_us_p50);
+    output.add("abort_tx_latency_us_p95", result.latency_summary.abort_tx_latency_us_p95);
+    output.add("abort_tx_latency_us_p99", result.latency_summary.abort_tx_latency_us_p99);
+    output.add("cold_occ_latency_us_p50", result.latency_summary.cold_occ_latency_us_p50);
+    output.add("cold_occ_latency_us_p95", result.latency_summary.cold_occ_latency_us_p95);
+    output.add("cold_occ_latency_us_p99", result.latency_summary.cold_occ_latency_us_p99);
+    output.add("hot_arbitration_latency_us_p50", result.latency_summary.hot_arbitration_latency_us_p50);
+    output.add("hot_arbitration_latency_us_p95", result.latency_summary.hot_arbitration_latency_us_p95);
+    output.add("hot_arbitration_latency_us_p99", result.latency_summary.hot_arbitration_latency_us_p99);
+    output.add("retry_count_p50", result.latency_summary.retry_count_p50);
+    output.add("retry_count_p95", result.latency_summary.retry_count_p95);
+    output.add("retry_count_p99", result.latency_summary.retry_count_p99);
+    output.add("latency_sample_count", (long long)result.latency_summary.latency_sample_count);
+    output.add("latency_sampling_mode", LatencySampler::mode_name(config.latency_sampling_mode));
+    output.add("latency_sample_size", (long long)config.latency_sample_size);
     output.add("hot_object_count", (long long)result.hot_object_count);
     output.add("hot_path_candidate_tx", (long long)stats->hot_path_candidate_tx.load());
     output.add("hot_path_tx", (long long)result.hot_path_tx);
@@ -637,6 +777,9 @@ int main(int argc, char* argv[]) {
     output.add("server_queue_wait_us_p95", result.server_queue_wait_p95_us);
     output.add("server_queue_wait_us_p99", result.server_queue_wait_p99_us);
     output.add("server_queue_wait_us_max", result.server_queue_wait_max_us);
+    output.add("queue_wait_us_p50", result.server_queue_wait_p50_us);
+    output.add("queue_wait_us_p95", result.server_queue_wait_p95_us);
+    output.add("queue_wait_us_p99", result.server_queue_wait_p99_us);
     output.add("queue_length_p50", result.queue_length_p50);
     output.add("queue_length_p95", result.queue_length_p95);
     output.add("queue_length_p99", result.queue_length_p99);

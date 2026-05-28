@@ -3,6 +3,7 @@
 
 #include "occ_engine.h"
 #include "dsm_object.h"
+#include "latency_sampler.h"
 #include <vector>
 #include <string>
 #include <map>
@@ -21,6 +22,14 @@ struct BenchmarkConfig {
     uint32_t duration_sec;
     uint32_t max_retries;
     std::string sold_counter_mode;  // global, per_product
+    std::string workload_name;
+    bool appendix_only;
+    std::string appendix_reason;
+
+    // Latency sampling
+    LatencySamplingMode latency_sampling_mode;
+    uint32_t latency_sample_size;
+    std::string latency_output;
 
     // Algorithm selection
     std::string algorithm;  // baseline_occ, backoff_occ, hot_detection_occ, hybrid_arbitration_occ
@@ -91,6 +100,7 @@ struct RunResult {
     double latency_p50_us;
     double latency_p95_us;
     double latency_p99_us;
+    LatencySummary latency_summary;
 
     // Hot path
     uint64_t hot_object_count;
@@ -135,6 +145,7 @@ private:
     std::unique_ptr<DSMObjectStore> store_;
     std::unique_ptr<OCCEngine> engine_;
     std::unique_ptr<InventoryWorkload> workload_;
+    std::unique_ptr<LatencySampler> latency_sampler_;
 };
 
 #endif // PHASE2_BENCHMARK_H

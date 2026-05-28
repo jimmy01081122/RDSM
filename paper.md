@@ -56,9 +56,13 @@ This distinction matters because per-object or per-shard arbitration can only re
 
 ## 8. Phase 5: Latency Sampling and Adaptive Routing
 
-The next planned phase is true transaction latency sampling and adaptive routing. Tail latency matters because a design can improve committed throughput while worsening p95 or p99 latency. Hybrid arbitration has exactly this risk: it can remove retry storms while introducing queue wait.
+Phase 5 adds true transaction latency sampling. Tail latency matters because a design can improve committed throughput while worsening p95 or p99 latency. Hybrid arbitration has exactly this risk: it can remove retry storms while introducing queue wait.
 
 Latency should be treated as prototype-relative evidence, not hardware RDMA latency. It is still useful when comparing global queues, per-object queues, per-shard queues, static arbitration, and adaptive routing under identical experimental conditions.
+
+The benchmark now supports `--latency-sampling=off|full|reservoir`, `--latency-sample-size`, and `--latency-output`. Run summaries report transaction latency percentiles, committed transaction latency percentiles, abort latency percentiles, path-specific cold/hot percentiles, retry-count percentiles, and sample counts. Aborted transactions are not mixed into committed latency percentiles.
+
+The first overhead smoke check uses 1-second, 2-thread runs for `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. It shows that full sampling is not suitable for long runs because it stores every transaction sample and can consume hundreds of MB within one second. Reservoir sampling is bounded and remains the intended default, but it still introduces measurable overhead and must be reported with any latency result.
 
 Adaptive routing should compare estimated OCC retry cost against estimated arbitration queue cost:
 
@@ -68,6 +72,8 @@ estimated_arbitration_cost_us = queue_wait_estimate_us + service_time_estimate_u
 ```
 
 Transactions should enter arbitration only when the estimated OCC cost exceeds arbitration cost by a routing margin.
+
+Adaptive routing is not yet evaluated in the current checked-in results. It should remain a planned Phase 5 extension until calibration and phase-change workloads are implemented and measured.
 
 ## 9. Evaluation
 

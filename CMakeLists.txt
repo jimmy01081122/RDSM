@@ -24,6 +24,7 @@ set(SOURCES
     src/rdma_conn.cpp
     src/dsm_object.cpp
     src/occ_engine.cpp
+    src/latency_sampler.cpp
     src/backoff.cpp
     src/hot_detection.cpp
     src/server_arbitration.cpp

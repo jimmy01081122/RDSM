@@ -1,0 +1,10 @@
+workload,latency_sampling_mode,latency_sample_size,committed_tx_per_sec,abort_rate,retry_per_commit,latency_sample_count,tx_latency_us_p50,tx_latency_us_p95,tx_latency_us_p99,max_rss_kb,invariant_violation_count,duplicate_commit_count
+low_uniform_read95,off,0,1824482.0,0.0,0.0,0,0.0,0.0,0.0,5164,0,0
+low_uniform_read95,reservoir,5000,1557155.0,0.0,0.0,5000,0.0,1.0,3.0,7604,0,0
+low_uniform_read95,full,0,968070.0,0.0,0.0,968070,0.0,1.0,2.0,505400,0,0
+mixed_hot4_write50,off,0,836012.0,0.0,0.0,0,0.0,0.0,0.0,15912,0,0
+mixed_hot4_write50,reservoir,5000,790490.0,0.0,0.0,5000,0.0,2.0,51.0,20700,0,0
+mixed_hot4_write50,full,0,549188.0,0.0,0.0,549188,0.0,2.0,53.0,302080,0,0
+high_hot16_write100,off,0,940628.0,0.0,0.0,0,0.0,0.0,0.0,15784,0,0
+high_hot16_write100,reservoir,5000,914307.0,0.0,0.0,5000,0.0,0.0,45.0,20496,0,0
+high_hot16_write100,full,0,644352.0,0.0,0.0,644352,0.0,1.0,53.0,351264,0,0

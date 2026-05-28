@@ -21,6 +21,8 @@ Last updated: 2026-05-28 UTC
 - Phase 4b cleanup summary: `results/phase4b_cleanup/phase4b_cleanup_summary.md`
 - Phase 3 validation summary bundle: `results/phase3_soft_roce_validation/`
 - Phase 5 latency sampling smoke summary: `results/phase5_latency_sampling/latency_overhead_summary.md`
+- Phase 5 latency sampling policy: `results/phase5_latency_sampling/latency_sampler_policy.md`
+- Phase 5 adaptive routing design/smoke: `results/phase5_adaptive_routing/`
 - Paper skeleton: `paper.md`
 - Final focused matrix plan: `final_focused_matrix_plan.md`
 
@@ -32,7 +34,8 @@ Last updated: 2026-05-28 UTC
 - Phase 2 is still a local RDMA-style DSM/OCC protocol benchmark, not an end-to-end two-node DSM-over-verbs benchmark.
 - Phase 3 validates two-node Soft-RoCE verbs transport only. It proves the node2 -> node1 RC path works, but it does not measure distributed DSM transaction throughput.
 - Phase 5 transaction latency sampling is prototype-relative. It is useful for comparing algorithms under identical local conditions, but it is not hardware RDMA latency evidence.
-- Full transaction sampling grows with transaction count and can exhaust memory quickly. Use reservoir sampling for longer runs.
+- Full transaction sampling grows with transaction count and can exhaust memory quickly. It is debug-only and guarded; use reservoir sampling for latency analysis.
+- Do not run final matrix with `--latency-sampling=full`.
 
 ## What Was Implemented
 
@@ -54,8 +57,11 @@ Last updated: 2026-05-28 UTC
 - Sold counter mode: `--sold-counter-mode global|per_product`
 - Phase 4 metrics: queue wait p50/p95/p99/max, queue length p50/p95/p99, service time p50/p95/p99/max
 - Phase 5 latency sampler: `include/latency_sampler.h`, `src/latency_sampler.cpp`
-- Phase 5 latency CLI: `--latency-sampling off|full|reservoir`, `--latency-sample-size`, `--latency-output`
+- Phase 5 latency CLI: `--latency-sampling off|full|reservoir`, `--latency-sample-size`, `--latency-output`, `--allow-dangerous-full-sampling`
 - Phase 5 latency summary fields: true transaction p50/p95/p99/max, committed-only latency, abort latency, path-specific cold/hot latency, retry percentiles, and sample count
+- Phase 5 adaptive routing prototype: `hybrid_adaptive_arbitration_occ`
+- Phase 5 adaptive routing CLI: `--adaptive-routing on|off`, `--routing-margin-us`, `--cost-window-ms`, `--min-samples-before-adapt`, `--adaptive-object-scope global|shard|object`
+- Phase 5 phase-change approximation script: `scripts/run_phase5_phase_change_approx.sh`
 - Full Chinese report rewritten in `report.md`
 
 ## Rebuild
@@ -216,7 +222,10 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Phase 4b correctness status: PASS; invariant violations 0, duplicate commits 0
 - Phase 5 latency overhead smoke rows: 9
 - Phase 5 latency overhead scope: 1-second, 2-thread smoke only; not final performance evidence
-- Phase 5 adaptive routing: not implemented/evaluated yet
+- Phase 5 latency default sample size: 10,000; smoke sample size: 5,000 or lower
+- Phase 5 adaptive routing smoke rows: 3
+- Phase 5 scripted phase-change approximation smoke rows: 9
+- Phase 5 adaptive routing status: design/prototype/smoke only; no final performance claim
 
 ## Interpretation Notes
 
@@ -228,6 +237,8 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Phase 3 Soft-RoCE numbers are diagnostic. High jitter in the virtualized Soft-RoCE/`rdma_rxe` environment means p99/max transport latency should not be used for DSM latency claims.
 - Compare Phase 2 and Phase 3 by purpose, not by raw units: Phase 2 is local transaction protocol throughput; Phase 3 is verbs-level transport validation.
 - Phase 5 latency samples are DSM prototype transaction samples. Report measurement overhead with any latency claim, and keep abort latency separate from committed transaction latency.
+- Adaptive-routing smoke rows verify plumbing and correctness only. They do not prove adaptive routing improves throughput or tail latency.
+- The phase-change approximation script restarts the benchmark between phases; it cannot prove continuous in-process adaptation.
 
 ## Known Limitations
 
@@ -238,9 +249,9 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Phase 4 adds queue-level arbitration, but the benchmark is still a local prototype and still has shared application objects such as `sold_count`; do not treat short Phase 4 numbers as final scalability results.
 - The first Phase 4 per-object/per-shard attempt exposed a lock-discipline bug between hot arbitration and OCC cold path. It was fixed by using deterministic per-object data locks in both paths before regenerating the checked-in Phase 4 summaries.
 - `sold_counter_mode=global` intentionally preserves the application-level shared metadata bottleneck. `sold_counter_mode=per_product` is only for arbitration-isolation validation.
-- Full latency sampling is for short smoke/debug runs only. A 1-second full-sampling run can consume hundreds of MB in this environment.
-- Reservoir latency sampling is implemented, but even reservoir mode has measurable overhead and must be disclosed.
-- Adaptive routing based on retry cost versus queue cost remains future work until implemented and evaluated under steady and phase-change workloads.
+- Full latency sampling is for short smoke/debug runs only. The benchmark rejects full sampling when `duration_sec > 2` or `threads > 2` unless `--allow-dangerous-full-sampling` is passed.
+- Reservoir latency sampling is implemented, but even reservoir mode has measurable overhead and must be disclosed. The default sample size is 10,000.
+- Adaptive routing based on retry cost versus queue cost is implemented as a minimal prototype, but calibration and final evaluation remain future work.
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.
 
@@ -249,15 +260,15 @@ RESULTS_DIR=./results/phase4b_cleanup \
 ```bash
 git status --short
 git add experiments include scripts src results/phase3 results/phase4_arbitration results/phase4b_cleanup report.md HANDOFF.md paper.md
-git add -f results/phase5_latency_sampling/latency_overhead_summary.md results/phase5_latency_sampling/latency_overhead_summary.csv
-git commit -m "phase5: add transaction latency sampling"
+git add -f results/phase5_latency_sampling results/phase5_adaptive_routing
+git commit -m "phase5: add adaptive routing smoke"
 git push origin HEAD
 ```
 
 ## Next Research Steps
 
-1. Add adaptive routing based on estimated OCC retry cost vs queue wait.
-2. Evaluate adaptive routing under steady workloads and phase-change workloads.
+1. Calibrate adaptive routing parameters with a small matrix after smoke review.
+2. Replace scripted phase-change approximation with native in-process phase changes if continuous adaptation is required.
 3. Convert the DSM/OCC benchmark into an end-to-end two-node verbs transport benchmark.
 4. Run the final focused matrix only after confirming duration/repetitions/thread scope.
 5. Add remote atomic/CAS transport validation if the final DSM protocol depends on atomics.

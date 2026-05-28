@@ -1,0 +1,4 @@
+algorithm,workload_name,committed_tx_per_sec,invariant_violation_count,duplicate_commit_count,latency_sample_count,tx_latency_us_p95,adaptive_route_to_occ_count,adaptive_route_to_arbitration_count,adaptive_insufficient_samples_count,adaptive_bad_route_proxy_count,estimated_occ_cost_us_p95,estimated_arbitration_cost_us_p95,routing_decision_latency_us_p95,oscillation_count
+hybrid_adaptive_arbitration_occ,low_uniform_read95,1180333.0,0,0,5000,1.0,1180333,0,0,0,0.0,0.0,0.0,0
+hybrid_adaptive_arbitration_occ,mixed_hot4_write50,424364.0,0,0,5000,1.0,424023,341,341,0,2.0,3.0,0.0,4
+hybrid_adaptive_arbitration_occ,high_hot16_write100,305286.0,0,0,5000,14.0,304885,401,401,0,2.0,3.0,0.0,4

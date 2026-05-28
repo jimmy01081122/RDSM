@@ -22,6 +22,7 @@ namespace {
 std::string output_file;
 constexpr uint64_t kInitialStockPerProduct = 10000000;
 constexpr uint64_t kInitialUserBalance = 100000000;
+constexpr size_t kMaxAdaptiveMetricSamples = 200000;
 
 bool to_bool(const std::string& value) {
     return value == "1" || value == "true" || value == "TRUE" || value == "yes";
@@ -221,9 +222,119 @@ BenchmarkRunner::BenchmarkRunner(const BenchmarkConfig& config)
     workload_ = std::make_unique<InventoryWorkload>(config_, store_.get(), engine_.get());
     latency_sampler_ = std::make_unique<LatencySampler>(
         config_.latency_sampling_mode, config_.latency_sample_size);
+    uint32_t adaptive_state_count = 1;
+    if (config_.adaptive_object_scope == "object") {
+        adaptive_state_count = std::max<uint32_t>(1, config_.num_products);
+    } else if (config_.adaptive_object_scope == "shard") {
+        adaptive_state_count = normalized_hot_shards(config_);
+    }
+    adaptive_states_.resize(adaptive_state_count);
 }
 
 BenchmarkRunner::~BenchmarkRunner() = default;
+
+uint32_t BenchmarkRunner::adaptive_scope_index(uint64_t product_id) const {
+    if (adaptive_states_.empty()) {
+        return 0;
+    }
+    if (config_.adaptive_object_scope == "object") {
+        return static_cast<uint32_t>(product_id % adaptive_states_.size());
+    }
+    if (config_.adaptive_object_scope == "shard") {
+        return static_cast<uint32_t>(product_id % adaptive_states_.size());
+    }
+    return 0;
+}
+
+bool BenchmarkRunner::choose_adaptive_route(uint64_t product_id, bool hot_candidate) {
+    if (!config_.adaptive_routing_enabled || !hot_candidate) {
+        store_->get_global_stats()->adaptive_route_to_occ_count++;
+        return false;
+    }
+
+    const uint64_t decision_start_ns = LatencySampler::now_ns();
+    auto stats = store_->get_global_stats();
+    bool route_to_arbitration = true;
+    double estimated_occ_cost_us = 1.0;
+    double estimated_arbitration_cost_us = 1.0;
+
+    {
+        std::lock_guard<std::mutex> lock(adaptive_mutex_);
+        auto& state = adaptive_states_[adaptive_scope_index(product_id)];
+        estimated_occ_cost_us =
+            state.ewma_occ_latency_us + state.ewma_retry_per_tx * std::max(1.0, state.ewma_occ_latency_us);
+        estimated_arbitration_cost_us = state.ewma_queue_wait_us + state.ewma_service_time_us;
+
+        if (state.samples < config_.min_samples_before_adapt) {
+            stats->adaptive_insufficient_samples_count++;
+            route_to_arbitration = true;  // Cold start uses the static hybrid rule for known-hot objects.
+        } else {
+            route_to_arbitration =
+                estimated_occ_cost_us > estimated_arbitration_cost_us + config_.routing_margin_us;
+            if (route_to_arbitration && estimated_occ_cost_us <= estimated_arbitration_cost_us) {
+                stats->adaptive_bad_route_proxy_count++;
+            }
+        }
+
+        if (state.has_last_route && state.last_route_arbitration != route_to_arbitration) {
+            stats->adaptive_oscillation_count++;
+        }
+        state.has_last_route = true;
+        state.last_route_arbitration = route_to_arbitration;
+
+        if (estimated_occ_cost_samples_.size() < kMaxAdaptiveMetricSamples) {
+            estimated_occ_cost_samples_.push_back(static_cast<uint64_t>(std::max(0.0, estimated_occ_cost_us)));
+        }
+        if (estimated_arbitration_cost_samples_.size() < kMaxAdaptiveMetricSamples) {
+            estimated_arbitration_cost_samples_.push_back(static_cast<uint64_t>(std::max(0.0, estimated_arbitration_cost_us)));
+        }
+        const uint64_t decision_latency_us = (LatencySampler::now_ns() - decision_start_ns) / 1000;
+        if (routing_decision_latency_samples_.size() < kMaxAdaptiveMetricSamples) {
+            routing_decision_latency_samples_.push_back(decision_latency_us);
+        }
+    }
+
+    if (route_to_arbitration) {
+        stats->adaptive_route_to_arbitration_count++;
+    } else {
+        stats->adaptive_route_to_occ_count++;
+    }
+    return route_to_arbitration;
+}
+
+void BenchmarkRunner::update_adaptive_state(uint64_t product_id, bool routed_to_arbitration) {
+    if (!config_.adaptive_routing_enabled) {
+        return;
+    }
+
+    constexpr double alpha = 0.20;
+    auto stats = store_->get_global_stats();
+    const double committed = std::max<uint64_t>(1, stats->committed_tx.load());
+    const double occ_latency_us =
+        static_cast<double>(stats->total_commit_latency_us.load()) / committed;
+    const double retry_per_tx =
+        static_cast<double>(stats->retry_count.load()) / committed;
+    const double wait_count = std::max<uint64_t>(1, stats->server_queue_wait_count.load());
+    const double service_count = std::max<uint64_t>(1, stats->server_service_time_count.load());
+    const double queue_wait_us =
+        static_cast<double>(stats->server_queue_wait_total_us.load()) / wait_count;
+    const double service_time_us =
+        static_cast<double>(stats->server_service_time_total_us.load()) / service_count;
+
+    std::lock_guard<std::mutex> lock(adaptive_mutex_);
+    auto& state = adaptive_states_[adaptive_scope_index(product_id)];
+    state.samples++;
+    state.ewma_occ_latency_us =
+        (1.0 - alpha) * state.ewma_occ_latency_us + alpha * std::max(1.0, occ_latency_us);
+    state.ewma_retry_per_tx =
+        (1.0 - alpha) * state.ewma_retry_per_tx + alpha * std::max(0.0, retry_per_tx);
+    if (routed_to_arbitration) {
+        state.ewma_queue_wait_us =
+            (1.0 - alpha) * state.ewma_queue_wait_us + alpha * std::max(0.0, queue_wait_us);
+        state.ewma_service_time_us =
+            (1.0 - alpha) * state.ewma_service_time_us + alpha * std::max(1.0, service_time_us);
+    }
+}
 
 int BenchmarkRunner::initialize_server() {
     for (uint32_t i = 0; i < config_.num_products; i++) {
@@ -497,16 +608,27 @@ int BenchmarkRunner::run_benchmark() {
                     store_->get_global_stats()->hot_path_candidate_tx++;
                 }
 
-                if (config_.hybrid_enabled && hot_candidate) {
-                    auto sample = base_latency_sample(config_, sampled_tx_id, t, "hot_arbitration");
+                bool route_to_arbitration = config_.hybrid_enabled && hot_candidate;
+                if (config_.adaptive_routing_enabled) {
+                    route_to_arbitration = choose_adaptive_route(order.product_id, hot_candidate);
+                }
+
+                if (route_to_arbitration) {
+                    auto sample = base_latency_sample(
+                        config_, sampled_tx_id, t,
+                        config_.adaptive_routing_enabled ? "adaptive_arbitration" : "hot_arbitration");
                     sample.route_decision_ns = LatencySampler::now_ns();
                     run_server_arbitrated_order(config_, store_.get(), latency_sampler_.get(), sample,
                                                 order, OCCEngine::get_time_us(), hot_candidate);
+                    update_adaptive_state(order.product_id, true);
                 } else {
-                    auto sample = base_latency_sample(config_, sampled_tx_id, t, "cold_occ");
+                    auto sample = base_latency_sample(
+                        config_, sampled_tx_id, t,
+                        config_.adaptive_routing_enabled ? "adaptive_occ" : "cold_occ");
                     sample.route_decision_ns = LatencySampler::now_ns();
                     run_occ_order(config_, store_.get(), engine_.get(), latency_sampler_.get(), sample,
                                   order, hot_candidate);
+                    update_adaptive_state(order.product_id, false);
                 }
             }
         });
@@ -571,6 +693,29 @@ RunResult BenchmarkRunner::get_result() {
     result.service_time_p99_us = percentile(service_samples, 99.0);
     result.service_time_max_us = static_cast<double>(stats->server_service_time_max_us.load());
     result.hot_cold_interference_count = stats->hot_cold_interference_count;
+    result.adaptive_route_to_occ_count = stats->adaptive_route_to_occ_count;
+    result.adaptive_route_to_arbitration_count = stats->adaptive_route_to_arbitration_count;
+    const uint64_t adaptive_routes =
+        result.adaptive_route_to_occ_count + result.adaptive_route_to_arbitration_count;
+    result.adaptive_route_to_occ_ratio = adaptive_routes > 0 ?
+        static_cast<double>(result.adaptive_route_to_occ_count) / adaptive_routes : 0.0;
+    result.adaptive_route_to_arbitration_ratio = adaptive_routes > 0 ?
+        static_cast<double>(result.adaptive_route_to_arbitration_count) / adaptive_routes : 0.0;
+    result.adaptive_insufficient_samples_count = stats->adaptive_insufficient_samples_count;
+    result.adaptive_bad_route_proxy_count = stats->adaptive_bad_route_proxy_count;
+    result.oscillation_count = stats->adaptive_oscillation_count;
+    {
+        std::lock_guard<std::mutex> lock(adaptive_mutex_);
+        result.estimated_occ_cost_us_p50 = percentile(estimated_occ_cost_samples_, 50.0);
+        result.estimated_occ_cost_us_p95 = percentile(estimated_occ_cost_samples_, 95.0);
+        result.estimated_occ_cost_us_p99 = percentile(estimated_occ_cost_samples_, 99.0);
+        result.estimated_arbitration_cost_us_p50 = percentile(estimated_arbitration_cost_samples_, 50.0);
+        result.estimated_arbitration_cost_us_p95 = percentile(estimated_arbitration_cost_samples_, 95.0);
+        result.estimated_arbitration_cost_us_p99 = percentile(estimated_arbitration_cost_samples_, 99.0);
+        result.routing_decision_latency_us_p50 = percentile(routing_decision_latency_samples_, 50.0);
+        result.routing_decision_latency_us_p95 = percentile(routing_decision_latency_samples_, 95.0);
+        result.routing_decision_latency_us_p99 = percentile(routing_decision_latency_samples_, 99.0);
+    }
 
     uint64_t initial_stock = config_.num_products * kInitialStockPerProduct;
     store_->verify_invariants(initial_stock, result.final_stock, result.sold_count);
@@ -587,11 +732,14 @@ static void print_help(const char* argv0) {
               << "--hot-products N --hot-access-prob P --duration-sec N --max-retries N\n"
               << "--sold-counter-mode global|per_product\n"
               << "--latency-sampling off|full|reservoir --latency-sample-size N --latency-output FILE\n"
-              << "--algorithm baseline_occ|backoff_occ|hot_detection_occ|hybrid_arbitration_occ\n"
+              << "--allow-dangerous-full-sampling (debug-only override)\n"
+              << "--algorithm baseline_occ|backoff_occ|hot_detection_occ|hybrid_arbitration_occ|hybrid_adaptive_arbitration_occ\n"
               << "--backoff-policy NO_BACKOFF|FIXED_BACKOFF|EXPONENTIAL_BACKOFF|RANDOMIZED_EXPONENTIAL_BACKOFF|CONTENTION_AWARE_BACKOFF\n"
               << "--backoff-base-us N --backoff-max-us N --hot-detection-enabled true|false\n"
               << "--hot-threshold R --hot-window-ms N --hot-min-access N --hot-refresh-interval N --hybrid-enabled true|false\n"
               << "--arbitration-mode global|per_object|per_shard --hot-shards 1|2|4|8|16|32\n"
+              << "--adaptive-routing on|off --routing-margin-us N --cost-window-ms N\n"
+              << "--min-samples-before-adapt N --adaptive-object-scope global|shard|object\n"
               << "--output-file FILE\n";
 }
 
@@ -611,8 +759,9 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     config.appendix_only = false;
     config.appendix_reason = "";
     config.latency_sampling_mode = LatencySamplingMode::Reservoir;
-    config.latency_sample_size = 100000;
+    config.latency_sample_size = 10000;
     config.latency_output = "";
+    config.allow_dangerous_full_sampling = false;
     config.algorithm = "baseline_occ";
     config.backoff_policy = "NO_BACKOFF";
     config.backoff_base_us = 10;
@@ -627,6 +776,11 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     config.hot_shards = 4;
     config.server_queue_size = 1000;
     config.server_worker_threads = 1;
+    config.adaptive_routing_enabled = false;
+    config.routing_margin_us = 10.0;
+    config.cost_window_ms = 250;
+    config.min_samples_before_adapt = 100;
+    config.adaptive_object_scope = "shard";
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
@@ -662,6 +816,7 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         else if (arg.rfind("--latency-sample-size=", 0) == 0) config.latency_sample_size = std::stoul(value_after_equals("--latency-sample-size="));
         else if (arg == "--latency-output") config.latency_output = next();
         else if (arg.rfind("--latency-output=", 0) == 0) config.latency_output = value_after_equals("--latency-output=");
+        else if (arg == "--allow-dangerous-full-sampling") config.allow_dangerous_full_sampling = true;
         else if (arg == "--algorithm") config.algorithm = next();
         else if (arg == "--backoff-policy") config.backoff_policy = next();
         else if (arg == "--backoff-base-us") config.backoff_base_us = std::stoul(next());
@@ -676,6 +831,16 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         else if (arg == "--hot-shards") config.hot_shards = std::stoul(next());
         else if (arg == "--server-queue-size") config.server_queue_size = std::stoul(next());
         else if (arg == "--server-worker-threads") config.server_worker_threads = std::stoul(next());
+        else if (arg == "--adaptive-routing") config.adaptive_routing_enabled = (next() == "on");
+        else if (arg.rfind("--adaptive-routing=", 0) == 0) config.adaptive_routing_enabled = (value_after_equals("--adaptive-routing=") == "on");
+        else if (arg == "--routing-margin-us") config.routing_margin_us = std::stod(next());
+        else if (arg.rfind("--routing-margin-us=", 0) == 0) config.routing_margin_us = std::stod(value_after_equals("--routing-margin-us="));
+        else if (arg == "--cost-window-ms") config.cost_window_ms = std::stoul(next());
+        else if (arg.rfind("--cost-window-ms=", 0) == 0) config.cost_window_ms = std::stoul(value_after_equals("--cost-window-ms="));
+        else if (arg == "--min-samples-before-adapt") config.min_samples_before_adapt = std::stoul(next());
+        else if (arg.rfind("--min-samples-before-adapt=", 0) == 0) config.min_samples_before_adapt = std::stoul(value_after_equals("--min-samples-before-adapt="));
+        else if (arg == "--adaptive-object-scope") config.adaptive_object_scope = next();
+        else if (arg.rfind("--adaptive-object-scope=", 0) == 0) config.adaptive_object_scope = value_after_equals("--adaptive-object-scope=");
         else if (arg == "--hot-products") {
             uint32_t hot_count = std::min<uint32_t>(std::stoul(next()), config.num_products);
             config.hot_product_ids.clear();
@@ -695,6 +860,11 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
         config.hot_detection_enabled = true;
         config.hybrid_enabled = true;
     }
+    if (config.algorithm == "hybrid_adaptive_arbitration_occ") {
+        config.hot_detection_enabled = true;
+        config.hybrid_enabled = true;
+        config.adaptive_routing_enabled = true;
+    }
     config.hot_access_probability = std::max(0.0, std::min(1.0, config.hot_access_probability));
     if (config.arbitration_mode != "global" &&
         config.arbitration_mode != "per_object" &&
@@ -703,6 +873,18 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     }
     if (config.sold_counter_mode != "global" && config.sold_counter_mode != "per_product") {
         throw std::runtime_error("invalid --sold-counter-mode: " + config.sold_counter_mode);
+    }
+    if (config.adaptive_object_scope != "global" &&
+        config.adaptive_object_scope != "shard" &&
+        config.adaptive_object_scope != "object") {
+        throw std::runtime_error("invalid --adaptive-object-scope: " + config.adaptive_object_scope);
+    }
+    if (config.latency_sampling_mode == LatencySamplingMode::Full &&
+        !config.allow_dangerous_full_sampling &&
+        (config.duration_sec > 2 || config.num_threads > 2)) {
+        throw std::runtime_error(
+            "full latency sampling is debug-only and requires duration-sec <= 2 and threads <= 2; "
+            "pass --allow-dangerous-full-sampling to override");
     }
     if (config.hot_shards == 0) {
         config.hot_shards = 1;
@@ -713,7 +895,13 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    BenchmarkConfig config = parse_args(argc, argv);
+    BenchmarkConfig config;
+    try {
+        config = parse_args(argc, argv);
+    } catch (const std::exception& ex) {
+        std::cerr << "error: " << ex.what() << std::endl;
+        return 1;
+    }
     BenchmarkRunner runner(config);
     runner.run_benchmark();
     RunResult result = runner.get_result();
@@ -730,6 +918,11 @@ int main(int argc, char* argv[]) {
     output.add("arbitration_mode", config.arbitration_mode);
     output.add("hot_shards", (long long)config.hot_shards);
     output.add("sold_counter_mode", config.sold_counter_mode);
+    output.add("adaptive_routing_enabled", config.adaptive_routing_enabled);
+    output.add("routing_margin_us", config.routing_margin_us);
+    output.add("cost_window_ms", (long long)config.cost_window_ms);
+    output.add("min_samples_before_adapt", (long long)config.min_samples_before_adapt);
+    output.add("adaptive_object_scope", config.adaptive_object_scope);
     output.add("appendix_only", config.appendix_only);
     output.add("appendix_reason", config.appendix_reason);
     output.add("attempted_tx", (long long)result.attempted_tx);
@@ -788,6 +981,22 @@ int main(int argc, char* argv[]) {
     output.add("service_time_us_p99", result.service_time_p99_us);
     output.add("service_time_us_max", result.service_time_max_us);
     output.add("hot_cold_interference_count", (long long)result.hot_cold_interference_count);
+    output.add("adaptive_route_to_occ_count", (long long)result.adaptive_route_to_occ_count);
+    output.add("adaptive_route_to_arbitration_count", (long long)result.adaptive_route_to_arbitration_count);
+    output.add("adaptive_route_to_occ_ratio", result.adaptive_route_to_occ_ratio);
+    output.add("adaptive_route_to_arbitration_ratio", result.adaptive_route_to_arbitration_ratio);
+    output.add("adaptive_insufficient_samples_count", (long long)result.adaptive_insufficient_samples_count);
+    output.add("adaptive_bad_route_proxy_count", (long long)result.adaptive_bad_route_proxy_count);
+    output.add("estimated_occ_cost_us_p50", result.estimated_occ_cost_us_p50);
+    output.add("estimated_occ_cost_us_p95", result.estimated_occ_cost_us_p95);
+    output.add("estimated_occ_cost_us_p99", result.estimated_occ_cost_us_p99);
+    output.add("estimated_arbitration_cost_us_p50", result.estimated_arbitration_cost_us_p50);
+    output.add("estimated_arbitration_cost_us_p95", result.estimated_arbitration_cost_us_p95);
+    output.add("estimated_arbitration_cost_us_p99", result.estimated_arbitration_cost_us_p99);
+    output.add("routing_decision_latency_us_p50", result.routing_decision_latency_us_p50);
+    output.add("routing_decision_latency_us_p95", result.routing_decision_latency_us_p95);
+    output.add("routing_decision_latency_us_p99", result.routing_decision_latency_us_p99);
+    output.add("oscillation_count", (long long)result.oscillation_count);
     output.add("invariant_violation_count", (long long)result.invariant_violation_count);
     output.add("duplicate_commit_count", (long long)result.duplicate_commit_count);
     output.add("final_stock", (long long)result.final_stock);

@@ -16,7 +16,8 @@ Scope: 1-second, 2-thread smoke check only. These rows validate measurement plum
 
 ## Notes
 
-- Default final-use mode remains `reservoir`; `full` sampling is for short smoke/debug runs only because it grows with transaction count and can exhaust memory.
+- Default final-use mode remains `reservoir`; the default sample size is now 10,000.
+- `full` sampling is debug-only and guarded because it grows with transaction count and can exhaust memory.
 - The reservoir sample size was reduced to 5,000 for this smoke check to avoid OOM risk while validating the path.
 - Raw full-sampling CSV files are intentionally not checked in because they can reach hundreds of MB per second.
 - All outliers are kept; aborted transaction latency is reported separately from committed transaction latency in run JSON.

@@ -60,9 +60,9 @@ Phase 5 adds true transaction latency sampling. Tail latency matters because a d
 
 Latency should be treated as prototype-relative evidence, not hardware RDMA latency. It is still useful when comparing global queues, per-object queues, per-shard queues, static arbitration, and adaptive routing under identical experimental conditions.
 
-The benchmark now supports `--latency-sampling=off|full|reservoir`, `--latency-sample-size`, and `--latency-output`. Run summaries report transaction latency percentiles, committed transaction latency percentiles, abort latency percentiles, path-specific cold/hot percentiles, retry-count percentiles, and sample counts. Aborted transactions are not mixed into committed latency percentiles.
+The benchmark now supports `--latency-sampling=off|full|reservoir`, `--latency-sample-size`, and `--latency-output`. Run summaries report transaction latency percentiles, committed transaction latency percentiles, abort latency percentiles, path-specific cold/hot percentiles, retry-count percentiles, and sample counts. Aborted transactions are not mixed into committed latency percentiles. The default reservoir sample size is 10,000 rather than 100,000 to reduce instrumentation overhead and OOM risk in the VM environment.
 
-The first overhead smoke check uses 1-second, 2-thread runs for `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. It shows that full sampling is not suitable for long runs because it stores every transaction sample and can consume hundreds of MB within one second. Reservoir sampling is bounded and remains the intended default, but it still introduces measurable overhead and must be reported with any latency result.
+The first overhead smoke check uses 1-second, 2-thread runs for `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. It shows that full sampling is not suitable for long runs because it stores every transaction sample and can consume hundreds of MB within one second. Full sampling is now debug-only and guarded for short runs unless explicitly overridden. Reservoir sampling is bounded and remains the only acceptable mode for final latency analysis, but it still introduces measurable overhead and must be reported with any latency result.
 
 Adaptive routing should compare estimated OCC retry cost against estimated arbitration queue cost:
 
@@ -71,9 +71,9 @@ estimated_occ_cost_us = base_occ_latency_us + expected_retries * retry_penalty_u
 estimated_arbitration_cost_us = queue_wait_estimate_us + service_time_estimate_us
 ```
 
-Transactions should enter arbitration only when the estimated OCC cost exceeds arbitration cost by a routing margin.
+Transactions should enter arbitration only when the estimated OCC cost exceeds arbitration cost by a routing margin. The checked-in prototype now includes `hybrid_adaptive_arbitration_occ` with decision counters, estimated cost percentiles, routing-decision latency, and oscillation tracking.
 
-Adaptive routing is not yet evaluated in the current checked-in results. It should remain a planned Phase 5 extension until calibration and phase-change workloads are implemented and measured.
+The current adaptive-routing evidence is smoke-level only. The three-row smoke summary verifies that the prototype runs without invariant violations or duplicate commits, but it does not support a claim that adaptive routing improves throughput or p99 latency. A scripted phase-change approximation is available as consecutive controlled runs; it must not be described as continuous in-process adaptation.
 
 ## 9. Evaluation
 
@@ -85,7 +85,7 @@ For final benchmark configurations, report mean, standard deviation, 95% confide
 
 ## 10. Discussion
 
-OCC is enough under low contention. Backoff is often enough when conflicts are moderate and retry timing is the primary issue. Static arbitration helps when hot objects are clear and stable. Adaptive routing becomes necessary when workload phases change or when static hot detection sends too much traffic through queues.
+OCC is enough under low contention. Backoff is often enough when conflicts are moderate and retry timing is the primary issue. Static arbitration helps when hot objects are clear and stable. Adaptive routing is the next mechanism to evaluate when workload phases change or when static hot detection sends too much traffic through queues.
 
 Soft-RoCE, `rdma_rxe`, and virtualization limit performance claims, but they do not invalidate prototype-relative protocol comparisons when the boundary is stated clearly.
 

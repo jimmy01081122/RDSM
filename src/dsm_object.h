@@ -88,6 +88,11 @@ public:
         std::atomic<uint64_t> server_service_time_max_us{0};
         std::atomic<uint64_t> server_queue_length_max{0};
         std::atomic<uint64_t> hot_cold_interference_count{0};
+        std::atomic<uint64_t> adaptive_route_to_occ_count{0};
+        std::atomic<uint64_t> adaptive_route_to_arbitration_count{0};
+        std::atomic<uint64_t> adaptive_insufficient_samples_count{0};
+        std::atomic<uint64_t> adaptive_bad_route_proxy_count{0};
+        std::atomic<uint64_t> adaptive_oscillation_count{0};
         std::vector<uint64_t> latency_histogram;  // [0-10us, 10-50us, 50-100us, 100-500us, 500+us]
     };
 

@@ -9,6 +9,7 @@
 #include <map>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 
 struct BenchmarkConfig {
     // Workload parameters
@@ -30,9 +31,10 @@ struct BenchmarkConfig {
     LatencySamplingMode latency_sampling_mode;
     uint32_t latency_sample_size;
     std::string latency_output;
+    bool allow_dangerous_full_sampling;
 
     // Algorithm selection
-    std::string algorithm;  // baseline_occ, backoff_occ, hot_detection_occ, hybrid_arbitration_occ
+    std::string algorithm;  // baseline_occ, backoff_occ, hot_detection_occ, hybrid_arbitration_occ, hybrid_adaptive_arbitration_occ
 
     // Backoff parameters
     std::string backoff_policy;  // NO_BACKOFF, FIXED_BACKOFF, EXPONENTIAL_BACKOFF, CONTENTION_AWARE_BACKOFF
@@ -53,8 +55,25 @@ struct BenchmarkConfig {
     uint32_t server_queue_size;
     uint32_t server_worker_threads;
 
+    // Adaptive routing parameters
+    bool adaptive_routing_enabled;
+    double routing_margin_us;
+    uint32_t cost_window_ms;
+    uint32_t min_samples_before_adapt;
+    std::string adaptive_object_scope;  // global, shard, object
+
     // Derived
     std::vector<uint32_t> hot_product_ids;
+};
+
+struct AdaptiveRoutingState {
+    double ewma_occ_latency_us{1.0};
+    double ewma_retry_per_tx{0.0};
+    double ewma_queue_wait_us{0.0};
+    double ewma_service_time_us{1.0};
+    uint64_t samples{0};
+    bool has_last_route{false};
+    bool last_route_arbitration{false};
 };
 
 class InventoryWorkload {
@@ -122,6 +141,24 @@ struct RunResult {
     double service_time_max_us;
     uint64_t hot_cold_interference_count;
 
+    // Adaptive routing
+    uint64_t adaptive_route_to_occ_count;
+    uint64_t adaptive_route_to_arbitration_count;
+    double adaptive_route_to_occ_ratio;
+    double adaptive_route_to_arbitration_ratio;
+    uint64_t adaptive_insufficient_samples_count;
+    uint64_t adaptive_bad_route_proxy_count;
+    double estimated_occ_cost_us_p50;
+    double estimated_occ_cost_us_p95;
+    double estimated_occ_cost_us_p99;
+    double estimated_arbitration_cost_us_p50;
+    double estimated_arbitration_cost_us_p95;
+    double estimated_arbitration_cost_us_p99;
+    double routing_decision_latency_us_p50;
+    double routing_decision_latency_us_p95;
+    double routing_decision_latency_us_p99;
+    uint64_t oscillation_count;
+
     // Correctness
     uint64_t invariant_violation_count;
     uint64_t duplicate_commit_count;
@@ -146,6 +183,15 @@ private:
     std::unique_ptr<OCCEngine> engine_;
     std::unique_ptr<InventoryWorkload> workload_;
     std::unique_ptr<LatencySampler> latency_sampler_;
+    mutable std::mutex adaptive_mutex_;
+    std::vector<AdaptiveRoutingState> adaptive_states_;
+    std::vector<uint64_t> estimated_occ_cost_samples_;
+    std::vector<uint64_t> estimated_arbitration_cost_samples_;
+    std::vector<uint64_t> routing_decision_latency_samples_;
+
+    uint32_t adaptive_scope_index(uint64_t product_id) const;
+    bool choose_adaptive_route(uint64_t product_id, bool hot_candidate);
+    void update_adaptive_state(uint64_t product_id, bool routed_to_arbitration);
 };
 
 #endif // PHASE2_BENCHMARK_H

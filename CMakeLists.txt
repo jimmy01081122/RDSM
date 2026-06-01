@@ -55,6 +55,11 @@ add_test(
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/check_benchmark_json.py
             $<TARGET_FILE:phase2_dsm_benchmark>
 )
+add_test(
+    NAME benchmark_high_contention_schema
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/check_benchmark_json.py
+            $<TARGET_FILE:phase2_dsm_benchmark> --high-contention
+)
 
 # Installation
 install(TARGETS phase2_dsm_benchmark DESTINATION bin)

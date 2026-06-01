@@ -318,6 +318,7 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - `bounded_rotation` is the canonical CLI and JSON metadata name; the historical `reservoir` value remains an accepted alias.
 - Counter schema version 2 separates logical transactions, OCC commit attempts, failed OCC attempts, final aborts, and business aborts. Historical mixed-denominator `abort_rate` rows are schema-sensitive.
 - Dormant RDMA CAS now requires a caller-provided registered local result buffer and `lkey`; `RDMAConnection` copying is disabled. This is build verification only, not hardware validation.
+- Dormant `RDMAConnectionImpl` fields are explicitly initialized, cleanup paths share one destructor routine, and registered MRs are deregistered before PD deallocation. The wrapper still requires Phase 6 two-node Soft-RoCE validation before it can be treated as usable.
 
 ## Future Phase 6: Project-level Two-node RDMA Wrapper Validation
 

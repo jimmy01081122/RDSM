@@ -1,6 +1,7 @@
 #include "dsm_object.h"
 #include "latency_sampler.h"
 #include "occ_engine.h"
+#include "rdma_conn.h"
 #include "server_arbitration.h"
 
 #include <algorithm>
@@ -8,7 +9,13 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+static_assert(!std::is_copy_constructible<RDMAConnection>::value,
+              "RDMAConnection must not be copy constructible");
+static_assert(!std::is_copy_assignable<RDMAConnection>::value,
+              "RDMAConnection must not be copy assignable");
 
 struct OCCEngineTestAccess {
     static int try_acquire_locks(OCCEngine& engine, Transaction& tx) {

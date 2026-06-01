@@ -6,17 +6,24 @@ import sys
 
 def main() -> int:
     benchmark = sys.argv[1]
+    high_contention = "--high-contention" in sys.argv[2:]
+    options = [
+        "--products", "4",
+        "--users", "10",
+        "--threads", "4" if high_contention else "1",
+        "--duration-sec", "2" if high_contention else "1",
+        "--algorithm", "baseline_occ",
+        "--latency-sampling", "reservoir",
+        "--latency-sample-size", "1000",
+    ]
+    if high_contention:
+        options.extend([
+            "--write-ratio", "1.0",
+            "--hot-products", "1",
+            "--hot-access-prob", "0.95",
+        ])
     completed = subprocess.run(
-        [
-            benchmark,
-            "--products", "4",
-            "--users", "10",
-            "--threads", "1",
-            "--duration-sec", "1",
-            "--algorithm", "baseline_occ",
-            "--latency-sampling", "reservoir",
-            "--latency-sample-size", "1000",
-        ],
+        [benchmark, *options],
         check=True,
         capture_output=True,
         text=True,
@@ -32,6 +39,8 @@ def main() -> int:
     )
     assert data["occ_attempts"] >= data["occ_failed_attempts"]
     assert data["occ_attempts"] == data["cold_path_tx"] + data["occ_failed_attempts"]
+    if high_contention:
+        assert data["occ_failed_attempts"] > 0
     for percentile in ("p50", "p95", "p99"):
         assert data[f"latency_us_{percentile}"] == data[f"tx_latency_us_{percentile}"]
     return 0

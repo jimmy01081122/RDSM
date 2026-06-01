@@ -8,16 +8,34 @@
 #include <map>
 
 struct RDMAConnectionImpl {
-    struct rdma_cm_id* cm_id;
-    struct rdma_cm_id* listen_id;
-    struct ibv_pd* pd;
-    struct ibv_cq* cq;
-    struct ibv_qp* qp;
+    struct rdma_cm_id* cm_id{nullptr};
+    struct rdma_cm_id* listen_id{nullptr};
+    struct ibv_pd* pd{nullptr};
+    struct ibv_cq* cq{nullptr};
+    struct ibv_qp* qp{nullptr};
     std::map<uint32_t, struct ibv_mr*> mr_map;
-    bool is_server;
-    uint64_t server_addr;
-    uint32_t server_rkey;
+    bool is_server{false};
+    uint64_t server_addr{0};
+    uint32_t server_rkey{0};
 };
+
+namespace {
+
+void destroy_impl(RDMAConnectionImpl* impl) {
+    if (!impl) return;
+
+    if (impl->qp) ibv_destroy_qp(impl->qp);
+    for (auto& p : impl->mr_map) {
+        if (p.second) ibv_dereg_mr(p.second);
+    }
+    if (impl->cq) ibv_destroy_cq(impl->cq);
+    if (impl->pd) ibv_dealloc_pd(impl->pd);
+    if (impl->cm_id) rdma_destroy_id(impl->cm_id);
+    if (impl->listen_id) rdma_destroy_id(impl->listen_id);
+    delete impl;
+}
+
+} // namespace
 
 RDMAConnection::RDMAConnection(const RDMAConfig& config)
     : config_(config), connected_(false), server_mr_addr_(0), server_rkey_(0),
@@ -27,16 +45,7 @@ RDMAConnection::RDMAConnection(const RDMAConfig& config)
 RDMAConnection::~RDMAConnection() {
     // Cleanup RDMA resources
     if (context_) {
-        auto impl = static_cast<RDMAConnectionImpl*>(context_);
-        if (impl->qp) ibv_destroy_qp(impl->qp);
-        if (impl->cq) ibv_destroy_cq(impl->cq);
-        if (impl->pd) ibv_dealloc_pd(impl->pd);
-        for (auto& p : impl->mr_map) {
-            if (p.second) ibv_dereg_mr(p.second);
-        }
-        if (impl->cm_id) rdma_destroy_id(impl->cm_id);
-        if (impl->listen_id) rdma_destroy_id(impl->listen_id);
-        delete impl;
+        destroy_impl(static_cast<RDMAConnectionImpl*>(context_));
     }
 }
 
@@ -63,7 +72,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (ret) {
         std::cerr << "rdma_create_id failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -71,7 +80,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (ret) {
         std::cerr << "rdma_bind_addr failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -79,7 +88,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (ret) {
         std::cerr << "rdma_listen failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -88,7 +97,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (ret) {
         std::cerr << "rdma_get_cm_event failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -96,7 +105,7 @@ int RDMAConnection::listen(uint16_t port) {
         std::cerr << "Unexpected CM event: " << event->event << std::endl;
         rdma_ack_cm_event(event);
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -114,7 +123,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (rdma_create_qp(impl->cm_id, impl->pd, &qp_attr)) {
         std::cerr << "rdma_create_qp failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -127,7 +136,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (rdma_accept(impl->cm_id, &cm_params)) {
         std::cerr << "rdma_accept failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -135,7 +144,7 @@ int RDMAConnection::listen(uint16_t port) {
     if (ret || event->event != RDMA_CM_EVENT_ESTABLISHED) {
         std::cerr << "Connection not established" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
     rdma_ack_cm_event(event);
@@ -168,7 +177,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (ret) {
         std::cerr << "rdma_create_id failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -176,7 +185,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (ret) {
         std::cerr << "rdma_resolve_addr failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -185,7 +194,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (ret || event->event != RDMA_CM_EVENT_ADDR_RESOLVED) {
         std::cerr << "Address not resolved" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
     rdma_ack_cm_event(event);
@@ -194,7 +203,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (ret) {
         std::cerr << "rdma_resolve_route failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -202,7 +211,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (ret || event->event != RDMA_CM_EVENT_ROUTE_RESOLVED) {
         std::cerr << "Route not resolved" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
     rdma_ack_cm_event(event);
@@ -218,7 +227,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (rdma_create_qp(impl->cm_id, impl->pd, &qp_attr)) {
         std::cerr << "rdma_create_qp failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -231,7 +240,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (rdma_connect(impl->cm_id, &cm_params)) {
         std::cerr << "rdma_connect failed" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
 
@@ -239,7 +248,7 @@ int RDMAConnection::connect(const std::string& server_addr, uint16_t server_port
     if (ret || event->event != RDMA_CM_EVENT_ESTABLISHED) {
         std::cerr << "Connection not established" << std::endl;
         rdma_freeaddrinfo(res);
-        delete impl;
+        destroy_impl(impl);
         return -1;
     }
     rdma_ack_cm_event(event);
@@ -328,7 +337,7 @@ int RDMAConnection::rdma_compare_swap(uint64_t remote_addr, uint32_t remote_rkey
                                       uint64_t compare_val, uint64_t swap_val,
                                       void* local_result_addr, uint32_t local_result_lkey,
                                       uint64_t wr_id) {
-    if (!connected_ || !context_) return -1;
+    if (!connected_ || !context_ || !local_result_addr || local_result_lkey == 0) return -1;
 
     auto impl = static_cast<RDMAConnectionImpl*>(context_);
 

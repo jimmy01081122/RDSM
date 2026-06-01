@@ -106,17 +106,17 @@ Canonical CLI mode 為 `bounded_rotation`。歷史 `reservoir` 值仍可作為 a
 
 ## 9. Audit bug 閱讀方式
 
-請閱讀 `results/final_audit_bug_report.md`。目前已確認幾個 code-level 限制：
+請閱讀 `results/final_audit_bug_report.md`。2026-06-01 scoped fix passes 已完成：
 
-- `duplicate_commit_count` / `hot_cold_interference_count` 是 dead counters。
+- `duplicate_commit_count` 與 `hot_cold_interference_count` 已加入偵測，但語意刻意受限：前者只偵測同一 `tx_id` 重複套用，後者是 hot-candidate-to-OCC routing proxy。
 - Counter schema version 2 已拆分 `logical_tx`、`occ_attempts`、`occ_failed_attempts`、`final_abort_tx`。歷史 `abort_rate` rows 仍屬 schema-sensitive。
 - `bounded_rotation` sampling（歷史 alias: `reservoir`）不是 Algorithm R。
-- OCC lock acquisition failure 可能留下 phantom lock bit。
-- legacy `latency_us_p95/p99` 是估算欄位，不應作 final latency evidence。
-- Zipfian distribution 每次 order 重建，可能影響 skewed workload overhead。
-- legacy server arbitrator abort counter 有 double-count 風險。
+- OCC partial lock acquisition failure 已回滾 owned lock bits。
+- `latency_us_p50/p95/p99` compatibility keys 已改用 sampler-backed values，不再輸出假造 percentile。
+- Zipfian distribution 已改為 per-thread cache。
+- legacy server arbitrator abort counter 已修正為只計數一次。
 
-目前未套用 invasive code fixes，除非未來明確設定 `APPLY_CODE_FIXES=1` 或另行授權。
+仍須注意：dormant `RDMAConnection` wrapper 尚未完成 two-node Soft-RoCE 驗證，不可視為可用 transport path。
 
 ## 10. 舊專案 prev_project 的閱讀方式
 

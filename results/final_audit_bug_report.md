@@ -83,7 +83,7 @@ Patch plan:
 Resolution applied 2026-06-01:
 
 - `try_acquire_locks()` now tracks acquired IDs and rolls back locks owned by the current transaction on either failure path.
-- Lock-acquisition failures now increment `aborted_tx`, matching other commit failure branches.
+- Lock-acquisition failures now increment `occ_failed_attempts`. A logical transaction increments `final_abort_tx` only after retry exhaustion.
 
 ### 5. Legacy Fake p95/p99 Latency Fields
 

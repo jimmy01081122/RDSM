@@ -2,7 +2,7 @@
 
 - Duration per run: 1 sec
 - Target repetitions: 1
-- Latency sampling mode: reservoir
+- Historical latency sampling CLI alias: `reservoir`; current canonical name: `bounded_rotation`
 - Latency sample size: 10000
 - Appendix-only filtering rule: final matrix contains only 1/2/4-thread main-body rows; rows with threads > 4 must be appendix-only in any future extension.
 

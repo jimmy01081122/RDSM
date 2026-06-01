@@ -9,7 +9,7 @@ Synthetic and application-like workloads are reported separately. This file inte
 - Historical `duplicate_commit_count` fields: 0; these pre-fix rows cannot support a no-duplicate-commit claim
 - Duration per run: 10 sec
 - Repetitions: 3
-- Latency sampling: reservoir, sample size 10000
+- Historical latency sampling CLI alias: `reservoir`; current canonical name: `bounded_rotation`, sample size 10000
 
 ## Synthetic Workloads
 

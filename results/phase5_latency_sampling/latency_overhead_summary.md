@@ -2,6 +2,9 @@
 
 Scope: 1-second, 2-thread smoke check only. These rows validate measurement plumbing and rough overhead; they are not final performance results.
 
+Historical snapshot note: table rows retain the original `reservoir` CLI alias.
+The current canonical name for that bounded rotating implementation is `bounded_rotation`.
+
 | Workload | Sampling | Sample size | Samples | tx/sec | Delta vs off | Abort rate | Retry/commit | Max RSS KB | Invariants | Duplicates |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | low_uniform_read95 | off | 0 | 0 | 1824482 | 0.00% | 0.0000 | 0.0000 | 5164 | 0 | 0 |
@@ -16,9 +19,9 @@ Scope: 1-second, 2-thread smoke check only. These rows validate measurement plum
 
 ## Notes
 
-- Default final-use mode remains `reservoir`; the default sample size is now 10,000.
+- Current canonical final-use mode is `bounded_rotation`; historical rows retain the `reservoir` alias. The default sample size is 10,000.
 - `full` sampling is debug-only and guarded because it grows with transaction count and can exhaust memory.
-- The reservoir sample size was reduced to 5,000 for this smoke check to avoid OOM risk while validating the path.
+- The bounded-rotation sample size was reduced to 5,000 for this smoke check to avoid OOM risk while validating the path.
 - Raw full-sampling CSV files are intentionally not checked in because they can reach hundreds of MB per second.
 - All outliers are kept; aborted transaction latency is reported separately from committed transaction latency in run JSON.
-- This smoke check shows measurable overhead even for reservoir sampling; final claims must report measurement overhead.
+- This smoke check shows measurable overhead even for bounded-rotation sampling; final claims must report measurement overhead.

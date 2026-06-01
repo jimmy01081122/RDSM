@@ -1,6 +1,6 @@
 # Phase 5 Adaptive Routing Smoke Summary
 
-Scope: 1-second, 2-thread smoke only. These rows validate minimal adaptive-routing plumbing and correctness; they are not final performance claims.
+Scope: historical 1-second, 2-thread smoke only. These rows validate minimal adaptive-routing plumbing and stock/sold invariants; they are not final performance claims or historical no-duplicate-commit evidence.
 
 | Workload | tx/sec | Samples | Invariants | Duplicates | Route OCC | Route Arb | Insufficient | Bad-route proxy | Est OCC p95 us | Est Arb p95 us | Decision p95 us | Oscillation |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -12,4 +12,4 @@ Scope: 1-second, 2-thread smoke only. These rows validate minimal adaptive-routi
 
 - The adaptive router is a minimal prototype, not a final calibrated policy.
 - Cold-start decisions fall back to static hybrid arbitration for known-hot objects and are counted separately.
-- Latency sampling uses bounded reservoir mode with sample size 5,000 to avoid OOM.
+- Historical latency sampling used the `reservoir` alias for bounded rotation with sample size 5,000 to avoid OOM. The current canonical name is `bounded_rotation`.

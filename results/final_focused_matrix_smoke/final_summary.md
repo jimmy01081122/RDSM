@@ -6,22 +6,22 @@ Synthetic and application-like workloads are reported separately. This file inte
 
 - Rows: 2
 - Invariant violations: 0
-- Duplicate commits: 0
+- Historical `duplicate_commit_count` fields: 0; these pre-fix rows cannot support a no-duplicate-commit claim
 - Duration per run: 1 sec
 - Repetitions: 1
-- Latency sampling: reservoir, sample size 10000
+- Historical latency sampling CLI alias: `reservoir`; current canonical name: `bounded_rotation`, sample size 10000
 
 ## Synthetic Workloads
 
 - Rows: 2
-| Workload | Algorithms | Threads | Runs | Correctness-clean |
+| Workload | Algorithms | Threads | Runs | Stock/sold invariant-clean |
 |---|---:|---|---:|---|
 | mixed_hot4_write50 | 2 | 1 | 2 | true |
 
 ## Application-like Workloads
 
 - Rows: 0
-| Workload | Algorithms | Threads | Runs | Correctness-clean |
+| Workload | Algorithms | Threads | Runs | Stock/sold invariant-clean |
 |---|---:|---|---:|---|
 
 ## Interpretation Boundary

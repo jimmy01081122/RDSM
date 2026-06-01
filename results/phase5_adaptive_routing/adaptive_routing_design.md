@@ -112,7 +112,7 @@ Known failure modes:
 - bad initial fallback can overuse arbitration
 - aggregate observations can hide per-object differences
 - queue-cost estimates can lag workload changes
-- reservoir latency sampling overhead can influence observed costs
+- bounded-rotation latency sampling overhead can influence observed costs
 - scripted phase-change approximation restarts the process and cannot show continuous in-process adaptation
 
 ## 11. Required Metrics
@@ -141,7 +141,7 @@ Smoke runs only:
 ```text
 duration-sec=1
 threads=2
-latency-sampling=reservoir
+latency-sampling=bounded_rotation
 latency-sample-size=5000
 ```
 
@@ -154,7 +154,7 @@ Workloads:
 Pass conditions:
 
 - invariant violations are zero
-- duplicate commits are zero
+- scoped duplicate-application detector is validated separately in post-fix CTest and smoke runs
 - adaptive metrics are present
 - latency fields are present
 - no OOM

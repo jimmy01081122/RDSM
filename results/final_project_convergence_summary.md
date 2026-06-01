@@ -47,7 +47,7 @@ The comparison uses:
 - Threads: 2, 4
 - Duration: 10 seconds
 - Repetitions: 3
-- CLI latency mode: `reservoir`
+- Historical CLI latency alias: `reservoir`; current canonical name: `bounded_rotation`
 - Sample size: 10000
 - Adaptive defaults: `routing_margin_us=5`, `cost_window_ms=500`, `hot_shards=8`
 

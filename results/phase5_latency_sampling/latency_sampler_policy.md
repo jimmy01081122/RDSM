@@ -6,12 +6,14 @@ Date: 2026-05-28 UTC
 
 The Phase 5 latency sampler records prototype-relative DSM transaction latency. These samples are useful for comparing routing policies under identical local conditions, but they are not hardware RDMA latency measurements.
 
-## Default Sampling Policy
+## Historical Snapshot And Current Name
 
-The default latency mode remains bounded reservoir sampling:
+This policy file is a historical snapshot. The bounded rotating implementation was
+originally invoked with the CLI value `reservoir`. The current canonical name is
+`bounded_rotation`; `reservoir` remains a backward-compatible alias:
 
 ```text
---latency-sampling=reservoir
+--latency-sampling=bounded_rotation
 --latency-sample-size=10000
 ```
 
@@ -42,11 +44,11 @@ The current overhead check is smoke-level only: 1-second, 2-thread runs over `lo
 
 Observed result:
 
-- Reservoir sampling is bounded but still has measurable overhead.
+- Bounded rotation sampling is bounded but still has measurable overhead.
 - Full sampling reduced tx/sec by roughly 31-47% in the smoke rows.
 - Full sampling reached hundreds of MB RSS within one second.
 
-Therefore, final latency analysis should use reservoir sampling and report measurement overhead. Throughput-primary runs and latency-analysis runs should remain clearly labeled.
+Therefore, final latency analysis should use `bounded_rotation` and report measurement overhead. Throughput-primary runs and latency-analysis runs should remain clearly labeled. Historical rows may still record the `reservoir` alias.
 
 ## Reporting Rule
 

@@ -89,7 +89,7 @@ The benchmark is a constrained local DSM protocol prototype using RDMA-style obj
 
 1. Replace the current coarse local mutation lock with per-object or per-hot-shard arbitration queues so unrelated hot objects can proceed in parallel.
 2. Add adaptive routing: send a transaction to arbitration only when predicted OCC retry cost exceeds estimated queue wait.
-3. Use the Phase 5 reservoir latency sampler for longer runs and report measurement overhead with any tail-latency analysis.
+3. Use the Phase 5 `bounded_rotation` latency sampler for longer runs and report measurement overhead with any tail-latency analysis. Historical rows may record the `reservoir` alias.
 4. Add two-node Soft-RoCE transport validation for the benchmark path, then keep protocol results separate from transport overhead.
 5. Add crash recovery/durability semantics for server arbitration before discussing production readiness.
 6. Explore dynamic hot threshold tuning and hysteresis to prevent oscillation between cold and hot paths.

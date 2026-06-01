@@ -3,7 +3,7 @@
 Scope: small calibration matrix only. These rows select a default routing policy; they should not be used as main-paper factorial figures.
 
 - Runs: 54
-- Correctness-clean: True
+- Historical stock/sold invariant-clean: True. Pre-fix `duplicate_commit_count=0` fields cannot support a historical no-duplicate-commit claim.
 - Selected default: routing_margin_us=5.0, cost_window_ms=500, min_samples_before_adapt=100, adaptive_object_scope=shard, hot_shards=8
 
 ## Calibration Table

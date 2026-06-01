@@ -5,9 +5,9 @@ This comparison separates the application-level shared `sold_count` metadata bot
 - Rows: 48
 - Duration per run: 10 sec
 - Repetitions: 3
-- Latency sampling mode in CLI: reservoir; implementation is a bounded rotating sample, sample size 10000
+- Historical latency sampling CLI alias: `reservoir`; current canonical name is `bounded_rotation`, sample size 10000
 - Adaptive defaults: routing_margin_us=5, cost_window_ms=500, hot_shards=8
-- Correctness-clean: True
+- Historical stock/sold invariant-clean: True. Pre-fix `duplicate_commit_count=0` fields cannot support a historical no-duplicate-commit claim.
 
 ## Summary By Configuration
 

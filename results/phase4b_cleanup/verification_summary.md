@@ -8,7 +8,7 @@ Scope: verify existing Phase 4b cleanup/isolation artifacts before Phase 5 work.
 |---|---|---|
 | All Phase 4b rows stock/sold invariant-clean | PASS | `results/phase4b_cleanup/summary.csv` has 24 historical rows with `invariant_violation_count=0`. Their pre-fix `duplicate_commit_count=0` fields cannot support a historical no-duplicate-commit claim. |
 | Invariant violations are zero | PASS | Total invariant violations across summary rows: 0. |
-| Duplicate commits are zero | PASS | Total duplicate commit count across summary rows: 0. |
+| Historical duplicate counter fields are zero | PASS_WITH_NOTE | Total pre-fix `duplicate_commit_count` across summary rows: 0. This cannot support a historical no-duplicate-commit claim. |
 | Both sold counter modes present | PASS | `sold_counter_mode` contains `global` and `per_product`. |
 | Required workload `mixed_hot4_write50` present | PASS | Present in both raw summary and Phase 4b aggregate summary. |
 | Required workload `high_hot16_write100` present | PASS | Present in both raw summary and Phase 4b aggregate summary. |

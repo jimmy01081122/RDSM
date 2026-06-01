@@ -128,3 +128,6 @@ Run the controlled sold-counter comparison:
 ## Latency Sampling Note
 
 The CLI mode is named `reservoir`, but the current implementation is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Treat p95/p99 values as prototype-relative tail indicators under identical collection policy, not as unbiased estimates of the full latency distribution.
+
+## VM ENV SETTING
+`/docs/ENVIRONMENT_AND_REPRODUCTION_GUIDE.md`

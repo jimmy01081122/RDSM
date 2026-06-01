@@ -186,7 +186,7 @@ done
 
 **性能指標提取**：
 
-修改 `scripts/parse_affinity_results.py`：
+若實作此延伸研究，可新增尚不存在的 proposal path `scripts/parse_affinity_results.py`：
 
 ```python
 import json
@@ -328,7 +328,7 @@ if __name__ == '__main__':
   - include/affinity.h（新）
   - experiments/affinity_baseline.cpp（參考）
   - 修改 phase2_dsm_benchmark.cpp（CLI 選項 + thread affinity）
-  - scripts/parse_affinity_results.py（新）
+  - scripts/parse_affinity_results.py（proposal，新；目前不存在）
 
 ✓ Data:
   - results/affinity_baseline_*.txt （48 files）
@@ -545,7 +545,7 @@ done
 # ...（已在現有矩陣中）
 ```
 
-**數據分析**：`scripts/analyze_tpcc_characteristics.py`
+**數據分析 proposal**：若實作此延伸研究，可新增尚不存在的 `scripts/analyze_tpcc_characteristics.py`。
 
 ```python
 import json
@@ -678,7 +678,7 @@ if __name__ == '__main__':
 ✓ Code:
   - experiments/workload_generator_tpcc.h（新）
   - 修改 phase2_dsm_benchmark.cpp（新 workload type）
-  - scripts/analyze_tpcc_characteristics.py（新）
+  - scripts/analyze_tpcc_characteristics.py（proposal，新；目前不存在）
 
 ✓ Data:
   - results/tpcc_*.json （48 files）

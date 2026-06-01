@@ -15,7 +15,7 @@ Date: 2026-05-28 UTC
 | Legacy fake p95/p99 latency fields | Fixed 2026-06-01 | Medium | Compatibility keys now use sampler percentiles |
 | Zipfian distribution rebuilt per order | Fixed 2026-06-01 | Low/Medium | Per-thread distribution cache added |
 | `server_arbitration.cpp` double-counts failed arbitrated aborts | Fixed 2026-06-01 | Medium | Abort counted once; counters made atomic |
-| `parse_phase3_results.py` hardcodes `RESULTS_DIR` | Confirmed | Low | Patch plan only |
+| Historical Phase 3 parser path unavailable in this snapshot | Fixed 2026-06-01 | Low | Current-use script references removed; manual commands documented |
 
 ## Confirmed Findings
 
@@ -139,14 +139,17 @@ Resolution applied 2026-06-01:
 - Quarantined dormant RDMA CAS posting: callers must provide a registered local result buffer and `lkey`, and `RDMAConnection` copying is disabled. This is build-verified only; no hardware CAS validation is claimed.
 - Added CTest-backed deterministic regression coverage for phantom-lock rollback, duplicate application detection, retry-exhaustion counters, legacy arbitrator abort counting, bounded-rotation parsing/bounds, and sampler-backed JSON percentile compatibility.
 
-### 8. `parse_phase3_results.py` Hardcoded Path
+### 8. Historical Parser Availability
 
-`scripts/parse_phase3_results.py` sets `RESULTS_DIR = Path("./results/phase3")` and `LEGACY_STAT_DIR = Path("./stat")` (`scripts/parse_phase3_results.py:11-12`) without environment overrides. This is not a correctness bug in current outputs, but it reduces reproducibility when parsing alternate result roots.
+The reviewed snapshot does not include `scripts/parse_phase3_results.py` or a
+`scripts/` directory. Checked-in historical summaries remain reviewable, but the
+old automated parse path is unavailable.
 
-Patch plan:
+Resolution applied 2026-06-01:
 
-- Change to `Path(os.environ.get("RESULTS_DIR", "./results/phase3"))` and `Path(os.environ.get("LEGACY_STAT_DIR", "./stat"))`.
-- Add a syntax check and parse smoke using a temporary result directory.
+- Removed current-use documentation references to unavailable runner/parser scripts.
+- Documented manual Phase 1 perftest commands and direct local benchmark/CTest commands.
+- Require replacement tooling before claiming automated historical artifact regeneration.
 
 ## Current Artifact Verification
 

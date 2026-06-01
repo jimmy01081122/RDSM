@@ -136,7 +136,7 @@ The benchmark supports:
 - `--latency-output`
 - `--allow-dangerous-full-sampling`
 
-The default sample size is 10,000. Full sampling is debug-only and guarded: it is rejected when `duration_sec > 2` or `threads > 2` unless explicitly overridden. The canonical mode is `bounded_rotation`; historical scripts may still pass the accepted `reservoir` alias. This is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Therefore, final latency numbers are used as prototype-relative tail indicators under identical collection policy, not as unbiased latency-distribution estimates. Run summaries separate all-transaction latency, committed-only latency, aborted transaction latency, cold OCC latency, hot arbitration latency, retry percentiles, and sample count. Aborted transactions are not mixed into committed latency percentiles.
+The default sample size is 10,000. Full sampling is debug-only and guarded: it is rejected when `duration_sec > 2` or `threads > 2` unless explicitly overridden. The canonical mode is `bounded_rotation`; historical runs may still record the accepted `reservoir` alias. This is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Therefore, final latency numbers are used as prototype-relative tail indicators under identical collection policy, not as unbiased latency-distribution estimates. Run summaries separate all-transaction latency, committed-only latency, aborted transaction latency, cold OCC latency, hot arbitration latency, retry percentiles, and sample count. Aborted transactions are not mixed into committed latency percentiles.
 
 Phase 5 also adds a minimal `hybrid_adaptive_arbitration_occ` prototype. The routing rule compares estimated OCC retry cost with estimated arbitration queue cost:
 
@@ -151,17 +151,17 @@ A transaction should enter arbitration only when estimated OCC cost exceeds arbi
 
 ### 10.1 Correctness
 
-Every final result must report invariant violations and duplicate commits. A row is correctness-clean only when both are zero. Correctness-clean short runs can validate plumbing, but they are not automatically publication-grade performance evidence.
+Historical matrix rows passed stock/sold invariant checks. Their `duplicate_commit_count` field was 0, but those rows were generated before the scoped detector was activated and cannot support a historical no-duplicate-commit claim. Post-fix CTest and smoke runs validate the scoped same-`tx_id` duplicate-application detector separately. Invariant-clean short runs can validate plumbing, but they are not automatically publication-grade performance evidence.
 
 ### 10.2 Adaptive Routing Calibration
 
-Calibration uses a small matrix over `routing_margin_us=5,10,20` and `cost_window_ms=100,250,500` on `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. The current calibration rows are correctness-clean and select `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, and `hot_shards=8`.
+Calibration uses a small matrix over `routing_margin_us=5,10,20` and `cost_window_ms=100,250,500` on `low_uniform_read95`, `mixed_hot4_write50`, and `high_hot16_write100`. The historical calibration rows passed stock/sold invariant checks and select `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, and `hot_shards=8`.
 
 The calibration also exposes a limitation: this minimal adaptive prototype is conservative. It keeps low-contention arbitration near zero, but hot-workload arbitration is a small nonzero fraction concentrated around cold-start/insufficient-sample behavior. This supports using the policy for a final focused comparison, but it does not by itself prove adaptive routing improves throughput or p99 latency.
 
 ### 10.3 Focused Synthetic Workloads
 
-The reduced focused final matrix completed 324 synthetic rows: 6 synthetic workloads, 6 algorithm variants, thread counts 1/2/4, and 3 repetitions. All rows are correctness-clean with zero invariant violations and zero duplicate commits. These results are reduced focused evidence, not a publication-grade full evaluation.
+The reduced focused final matrix completed 324 synthetic rows: 6 synthetic workloads, 6 algorithm variants, thread counts 1/2/4, and 3 repetitions. All historical rows passed stock/sold invariant checks. These results are reduced focused evidence, not a publication-grade full evaluation.
 
 Synthetic workloads are reported separately:
 
@@ -182,7 +182,7 @@ The adaptive prototype does not yet outperform static arbitration in the final m
 
 ### 10.4 Application-like Workloads
 
-The reduced focused final matrix completed 216 application-like rows: 4 application-like workloads, 6 algorithm variants, thread counts 1/2/4, and 3 repetitions. All rows are correctness-clean with zero invariant violations and zero duplicate commits.
+The reduced focused final matrix completed 216 application-like rows: 4 application-like workloads, 6 algorithm variants, thread counts 1/2/4, and 3 repetitions. All historical rows passed stock/sold invariant checks.
 
 Application-like workloads are reported in a separate section:
 
@@ -197,7 +197,7 @@ The application-like workloads reinforce the same shape-dependent conclusion. `f
 
 ### 10.5 Sold Counter Bottleneck Study
 
-The controlled sold-counter comparison completed 48 rows in `results/final_sold_counter_comparison/`: 2 workloads, 2 sold-counter modes, 2 algorithms, thread counts 2/4, and 3 repetitions. All rows are correctness-clean with zero invariant violations and zero duplicate commits.
+The controlled sold-counter comparison completed 48 historical rows in `results/final_sold_counter_comparison/`: 2 workloads, 2 sold-counter modes, 2 algorithms, thread counts 2/4, and 3 repetitions. All rows passed stock/sold invariant checks.
 
 The result should be read as a data-model bottleneck study, not as a universal algorithm ranking. `global` sold counter represents an application-level shared metadata object that every successful write touches. `per_product` sold counters remove that extra shared object and better isolate arbitration queue behavior. In `high_hot16_write100`, per-product counters improve throughput for both static and adaptive per-shard variants: the per-product/global throughput ratio is about 1.40 for static at 2 threads and about 1.10 at 4 threads, while adaptive improves by about 1.20 and 1.19 at 2 and 4 threads. This supports the interpretation that the global metadata object can mask the benefit of sharded arbitration.
 
@@ -205,7 +205,7 @@ In `mixed_hot4_write50`, the trend is less uniform. Per-product improves static 
 
 ### 10.6 Phase-change Approximation
 
-The current phase-change script is a multi-process scripted approximation. It does not prove continuous in-process adaptive reaction. The formal short approximation uses the selected calibration default and remains correctness-clean, but it should be interpreted only as a low-risk approximation of phase changes across separate benchmark processes.
+The current phase-change artifacts came from a multi-process scripted approximation. They do not prove continuous in-process adaptive reaction. The formal short approximation uses the selected calibration default and remains stock/sold invariant-clean, but it should be interpreted only as a low-risk approximation of phase changes across separate benchmark processes.
 
 ### 10.7 Latency Sampling Overhead
 
@@ -215,7 +215,7 @@ Latency overhead must be disclosed with any latency result. Full sampling is not
 
 OCC is appropriate when contention is low. Backoff is useful when conflicts are moderate and timing-related. Static arbitration helps when hot objects are stable and routing is accurate. Per-object and per-shard arbitration reduce artificial over-serialization compared with global arbitration only when the application data model does not add another shared bottleneck. Adaptive routing is promising only if calibration and final matrix data show that it avoids unnecessary arbitration and p99 regression.
 
-The current reduced final matrix is correctness-clean and provides a much stronger basis than the earlier smoke/discovery rows. However, it remains reduced: duration is 10 seconds per run, repetitions are 3, and all results are from the local prototype under virtualized Linux + Soft-RoCE constraints. It should be described as reduced focused final evidence, not as a full publication-grade evaluation.
+The current reduced final matrix passed historical stock/sold invariant checks and provides a stronger basis than the earlier smoke/discovery rows. However, it remains reduced: duration is 10 seconds per run, repetitions are 3, and all results are from the local prototype under virtualized Linux + Soft-RoCE constraints. It should be described as reduced focused final evidence, not as a full publication-grade evaluation.
 
 ## 12. Limitations
 

@@ -1,6 +1,6 @@
 # RDSM 研究計畫項目確認文件
 
-最後更新：2026-05-28 UTC
+最後更新：2026-06-01 UTC
 
 本文件用來維護本專案的研究計畫項目、完成狀態、證據位置與後續動作。狀態定義如下：
 
@@ -44,13 +44,12 @@
 | Phase 5 | Latency overhead smoke | 完成 | `results/phase5_latency_sampling/latency_overhead_summary.md` | Final sample size 已定為 10000；若之後改變才需重跑 overhead check。 |
 | Phase 5 | Full sampling guard | 完成 | CLI `--allow-dangerous-full-sampling` | Full sampling 僅 debug，不納入 final matrix。 |
 | Phase 5 | Adaptive routing prototype | 完成 | `hybrid_adaptive_arbitration_occ`、`results/phase5_adaptive_routing/adaptive_smoke_summary.md` | 已完成 calibration/default selection 並納入 reduced final matrix；效能主張需依 final matrix 分析。 |
-| Phase 5 | Adaptive routing calibration | 完成 | `results/phase5_adaptive_routing/calibration_summary.md`、`.csv` | 54 runs correctness-clean；selected default 為 `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8`。 |
-| Phase 5 | Formal phase-change approximation | 完成 | `results/phase5_adaptive_routing/phase_change_summary.md`、`.csv` | 18 rows correctness-clean；仍只是 multi-process approximation，不是 continuous in-process adaptation。 |
-| Final | Reduced focused final matrix | 完成 | `results/final_focused_matrix/summary.csv`、`summary_by_config.csv`、`final_summary.md`、`statistical_report.md`、`run_metadata.json` | 540 rows correctness-clean；這是 reduced focused final matrix，不是 publication-grade full evaluation。 |
-| Final | Global vs per-product controlled comparison | 完成 | `results/final_sold_counter_comparison/summary.csv`、`summary_by_config.csv`、`sold_counter_comparison_summary.md`、`run_metadata.json` | 48 rows correctness-clean；只作 shared metadata bottleneck study。 |
+| Phase 5 | Adaptive routing calibration | 完成 | `results/phase5_adaptive_routing/calibration_summary.md`、`.csv` | 54 historical runs 通過 stock/sold invariants；selected default 為 `routing_margin_us=5`, `cost_window_ms=500`, `adaptive_object_scope=shard`, `hot_shards=8`。 |
+| Phase 5 | Formal phase-change approximation | 完成 | `results/phase5_adaptive_routing/phase_change_summary.md`、`.csv` | 18 historical rows 通過 stock/sold invariants；仍只是 multi-process approximation，不是 continuous in-process adaptation。 |
+| Final | Reduced focused final matrix | 完成 | `results/final_focused_matrix/summary.csv`、`summary_by_config.csv`、`final_summary.md`、`statistical_report.md`、`run_metadata.json` | 540 historical rows 通過 stock/sold invariants；修正前 duplicate counter 不足以支持 historical no-duplicate claim。這不是 publication-grade full evaluation。 |
+| Final | Global vs per-product controlled comparison | 完成 | `results/final_sold_counter_comparison/summary.csv`、`summary_by_config.csv`、`sold_counter_comparison_summary.md`、`run_metadata.json` | 48 historical rows 通過 stock/sold invariants；只作 shared metadata bottleneck study。 |
 | Final | Statistical report | 完成 | `results/final_focused_matrix/statistical_report.md` | 已含 mean/stddev/95% CI/repetitions/duration/sampling policy。 |
 | Final | Final `paper.md` convergence | 完成 | `paper.md` | 已納入 Stage 0、final matrix trend analysis、sold-counter comparison、claim boundary。 |
-| Final | Chinese `report.md` convergence | 部分完成 | `report.md` | 已加 stale warning；若需要中文最終論文，需依 `paper.md` 重新整合。 |
 | Final | Chinese `paper_zh.md` report | 完成 | `paper_zh.md` | 依 `paper.md` 生成中文最終報告；英文 `paper.md` 仍為 canonical source。 |
 | Final | Final `HANDOFF.md` convergence | 完成 | `HANDOFF.md` | 已更新 final matrix rows、correctness 與重現指令。 |
 | Final | Project convergence summary | 完成 | `results/final_project_convergence_summary.md` | 用於確認目前 cycle 收束狀態。 |
@@ -72,7 +71,7 @@
 | Final matrix duration/repetitions | 已執行 `duration_sec=10`, `repetitions=3` | 已完成 |
 | Main thread counts | `1,2,4` | 已定 |
 | Sold-counter policy | Main arbitration-isolation 使用 `per_product`; `global` 僅作 controlled bottleneck comparison | 已定 |
-| Final report language | 英文 canonical report 為 `paper.md`；中文 final report 為 `paper_zh.md`；`report.md` 是中文舊快照 | 已定 |
+| Final report language | 英文 canonical report 為 `paper.md`；中文 final report 為 `paper_zh.md` | 已定 |
 
 ## Maintenance Rule
 

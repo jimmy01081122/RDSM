@@ -793,7 +793,7 @@ ib_send_lat -d rxe0 192.168.56.101
 
 ***
 
-# 8. 專案 Phase 1 runner
+# 8. Phase 1 手動重現方式
 
 假設 repo 位於：
 
@@ -801,23 +801,12 @@ ib_send_lat -d rxe0 192.168.56.101
 /home/node1/RDSM
 ```
 
-且 node2 可以 SSH 到 node1。
+且 node2 可以連線到 node1。
 
-在 orchestration 端執行，通常是 node2 或你當前控制端：
-
-```bash
-cd /home/node1/RDSM
-RESULTS_DIR=./results/phase3 \
-LAT_ITERS=1000 \
-BW_DURATION=2 \
-./scripts/run_phase3_two_node_soft_roce_validation.sh
-```
-
-解析結果：
-
-```bash
-python3 scripts/parse_phase3_results.py
-```
+目前 repository snapshot 不包含歷史 orchestration runner 或 parser scripts。
+請依本文件第 7 節在 node1 啟動 server-side perftest，並在 node2 執行對應
+client-side 指令，例如 `ib_write_lat`、`ib_write_bw`、`ib_read_lat` 與
+`ib_send_lat`。新增自動化工具前，不可宣稱存在一鍵重現流程。
 
 注意：目前結果目錄歷史上叫 `phase3`，但 final paper 將這些 two-VM Soft-RoCE validation 視為 **Phase 1 evidence**。
 
@@ -951,4 +940,3 @@ ib_write_bw -d rxe0 -x 1 192.168.56.101
 ```
 
 是否需要 `-x 1` 取決於實際 GID table。
-

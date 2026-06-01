@@ -58,7 +58,6 @@ RDSM/
 │   └── rdma_conn.cpp                # Project RDMA wrapper prototype
 ├── experiments/
 │   └── phase2_dsm_benchmark.cpp     # Main local DSM/OCC benchmark driver
-├── scripts/                         # Experiment runners and result parsers
 ├── results/                         # Checked-in summaries and selected raw artifacts
 │   ├── final_focused_matrix/         # Reduced final focused matrix
 │   └── final_sold_counter_comparison/# Global vs per-product comparison
@@ -91,31 +90,32 @@ Run a short benchmark:
   --latency-sample-size 1000
 ```
 
-Parse a result directory:
+Run the CTest regression suite:
 
 ```bash
-RESULTS_DIR=./results/phase2 python3 scripts/parse_phase2_results.py
+ctest --test-dir build --output-on-failure
 ```
 
-Run the reduced final matrix only when runtime and disk budget are acceptable:
+Run a direct five-algorithm smoke matrix:
 
 ```bash
-DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
-  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
-  ./scripts/run_final_focused_matrix.sh
+for algo in baseline_occ backoff_occ hot_detection_occ \
+  hybrid_arbitration_occ hybrid_adaptive_arbitration_occ; do
+  ./build/phase2_dsm_benchmark \
+    --products 4 --users 10 --threads 2 --duration-sec 3 \
+    --algorithm "$algo" --hot-products 1 --hot-access-prob 0.9 \
+    --arbitration-mode per_object --write-ratio 1.0
+done
 ```
 
-Run the controlled sold-counter comparison:
-
-```bash
-./scripts/run_sold_counter_comparison.sh
-```
+Historical result matrices remain checked in under `results/`. Their original batch
+runner and parser scripts are not present in this repository snapshot. Do not invoke
+or claim an automated regeneration path until replacement tooling is added.
 
 ## Current Key Artifacts
 
 - Final paper: `paper.md`
 - Chinese final paper: `paper_zh.md`
-- Chinese report snapshot, if present in the working tree: `report.md`
 - Handoff: `HANDOFF.md`
 - Plan/status checklist: `PROJECT_PLAN_STATUS.md`
 - Reading guide: `READING_GUIDE.md`

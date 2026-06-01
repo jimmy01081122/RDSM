@@ -40,7 +40,7 @@ Scope: small calibration matrix only. These rows select a default routing policy
 
 ## Answers
 
-1. Correctness: all calibration rows are correctness-clean when invariant violations and duplicate commits are both zero.
+1. Historical invariant status: all calibration rows report stock/sold invariant violations 0. Their pre-fix `duplicate_commit_count=0` fields cannot support a historical no-duplicate-commit claim.
 2. Low-contention arbitration: all selected candidates keep `low_uniform_read95` arbitration near zero.
 3. Hot workload routing: the prototype routes a small nonzero fraction of known-hot transactions during cold-start/insufficient-sample periods; this is conservative and should be discussed as a limitation.
 4. p99 latency: compare p99 as prototype-relative latency only; the selected default has the lowest aggregate score under the current heuristic.

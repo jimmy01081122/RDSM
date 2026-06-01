@@ -1,6 +1,6 @@
 # RDSM Project Handoff
 
-Last updated: 2026-05-28 UTC
+Last updated: 2026-06-01 UTC
 
 ## Current State
 
@@ -8,7 +8,6 @@ Last updated: 2026-05-28 UTC
 - Remote: `git@github.com:jimmy01081122/RDSM.git`
 - Main executable: `build/phase2_dsm_benchmark`
 - Current final report: `paper.md`
-- Chinese report snapshot: `report.md` (stale Phase 2/3-oriented snapshot; see warning at top of file)
 - Raw results: `results/phase2/`
 - Summary CSV: `results/phase2/summary.csv`
 - Grouped CSV: `results/phase2/summary_by_config.csv`
@@ -84,14 +83,10 @@ Last updated: 2026-05-28 UTC
 - Application case parameter: `--application-case flash_sale|ticket_booking|ad_budget|warehouse_restock`
 - Hot access control: `--hot-access-prob`
 - Hybrid/hot detection optimization: `--hot-refresh-interval`
-- Focused benchmark matrix: `scripts/run_phase2_focused_experiments.sh`
-- Application benchmark matrix: `scripts/run_phase2_application_experiments.sh`
-- Report parser: `scripts/parse_phase2_results.py`
-- Phase 3 two-node Soft-RoCE validation runner: `scripts/run_phase3_two_node_soft_roce_validation.sh`
-- Phase 3 parser: `scripts/parse_phase3_results.py`
+- Historical focused/application matrix artifacts are checked in under `results/`; their original runner and parser scripts are not present in this snapshot.
+- Phase 1 two-node Soft-RoCE diagnostics can be rerun manually with the perftest commands in `docs/ENVIRONMENT_AND_REPRODUCTION_GUIDE.md`.
 - Phase 4 arbitration modes in `phase2_dsm_benchmark`: `global`, `per_object`, `per_shard`
-- Phase 4 focused runner: `scripts/run_phase4_arbitration_experiments.sh`
-- Phase 4b cleanup runner: `scripts/run_phase4b_cleanup_experiments.sh`
+- Phase 4 and Phase 4b historical artifacts remain checked in; automated matrix regeneration tooling is not bundled.
 - Sold counter mode: `--sold-counter-mode global|per_product`
 - Phase 4 metrics: queue wait p50/p95/p99/max, queue length p50/p95/p99, service time p50/p95/p99/max
 - Phase 5 latency sampler: `include/latency_sampler.h`, `src/latency_sampler.cpp`
@@ -99,8 +94,7 @@ Last updated: 2026-05-28 UTC
 - Phase 5 latency summary fields: transaction p50/p95/p99/max, committed-only latency, abort latency, path-specific cold/hot latency, retry percentiles, and sample count
 - Phase 5 adaptive routing prototype: `hybrid_adaptive_arbitration_occ`
 - Phase 5 adaptive routing CLI: `--adaptive-routing on|off`, `--routing-margin-us`, `--cost-window-ms`, `--min-samples-before-adapt`, `--adaptive-object-scope global|shard|object`
-- Phase 5 phase-change approximation script: `scripts/run_phase5_phase_change_approx.sh`
-- Full Chinese report rewritten in `report.md`
+- Phase 5 phase-change approximation artifacts are historical; automated regeneration tooling is not bundled.
 - Research plan checklist: `PROJECT_PLAN_STATUS.md`
 
 ## Rebuild
@@ -148,19 +142,21 @@ mkdir -p results/phase5_latency_sampling/smoke
   --latency-output results/phase5_latency_sampling/smoke/latency_samples.csv
 ```
 
-## Reproduce Current Report
+## Reproduce Current Local Verification
 
 ```bash
 cd /home/node1/RDSM
-python3 scripts/parse_phase2_results.py
-python3 scripts/parse_phase3_results.py
+cmake -S . -B build
+cmake --build build -j"$(nproc)"
+ctest --test-dir build --output-on-failure
 ```
 
 Phase 3a Layer 1 cleanup has also collected `ibv_rc_pingpong` and `ib_read_bw` rows in `results/phase3/two_node_soft_roce_20260528_phase3a_layer1/`.
 
 Project-level `two_node_rdma_validation` is deferred. The current `RDMAConnection` wrapper is not complete enough for minimal READ/WRITE/CAS validation without non-trivial RDMA CM, MR exchange, and CQ setup work.
 
-`scripts/parse_phase2_results.py` regenerates the older English Phase 2 report at `results/phase2/phase2_report.md`. The root `report.md` is reserved for the Chinese full Phase 2 + Phase 3 report.
+Historical report parsers are not present in this repository snapshot. Checked-in
+summaries remain available for review, but automated regeneration requires new tooling.
 
 ## Rerun Phase 3 Two-Node Soft-RoCE Validation
 
@@ -171,111 +167,59 @@ Current node layout:
 - SSH target: `node1@192.168.56.101`
 - SSH key default: `$HOME/.ssh/node2_to_node1`
 
-Command:
+Follow the manual node1/server and node2/client perftest commands in
+`docs/ENVIRONMENT_AND_REPRODUCTION_GUIDE.md`. The historical orchestration runner
+and parser are not included in this snapshot.
+
+## Rerun Local Smoke Matrix
 
 ```bash
-cd /home/node1/RDSM
-RESULTS_DIR=./results/phase3 LAT_ITERS=1000 BW_DURATION=2 \
-  ./scripts/run_phase3_two_node_soft_roce_validation.sh
-
-python3 scripts/parse_phase3_results.py
+for algo in baseline_occ backoff_occ hot_detection_occ \
+  hybrid_arbitration_occ hybrid_adaptive_arbitration_occ; do
+  ./build/phase2_dsm_benchmark \
+    --products 4 --users 10 --threads 2 --duration-sec 3 \
+    --algorithm "$algo" --hot-products 1 --hot-access-prob 0.9 \
+    --arbitration-mode per_object --write-ratio 1.0
+done
 ```
 
-Fuller sweep defaults can be changed with environment variables:
-
-```bash
-SIZES="8 64 256 1024 4096 16384 65536"
-TESTS="ib_write_lat ib_read_lat ib_send_lat ib_write_bw"
-LAT_ITERS=1000
-BW_DURATION=2
-```
-
-## Rerun Experiment Matrices
-
-Fast focused trade-off matrix:
-
-```bash
-RESULTS_DIR=./results/phase2 DURATION_SEC=1 REPETITIONS=2 START_INDEX=200 \
-  ./scripts/run_phase2_focused_experiments.sh
-```
-
-Application scenario matrix:
-
-```bash
-RESULTS_DIR=./results/phase2 DURATION_SEC=1 REPETITIONS=1 START_INDEX=400 \
-  ./scripts/run_phase2_application_experiments.sh
-```
-
-Original phase2 matrix:
-
-```bash
-RESULTS_DIR=./results/phase2 DURATION_SEC=1 REPETITIONS=1 \
-  ./scripts/run_phase2_experiments.sh
-```
-
-After any run:
-
-```bash
-python3 scripts/parse_phase2_results.py
-```
-
-## Rerun Phase 4 Arbitration Queue Matrix
-
-Short discovery run:
-
-```bash
-RESULTS_DIR=./results/phase4_arbitration DURATION_SEC=1 REPETITIONS=1 \
-  ./scripts/run_phase4_arbitration_experiments.sh
-
-RESULTS_DIR=./results/phase4_arbitration \
-  python3 scripts/parse_phase2_results.py
-```
-
-Longer report-grade runs should increase `DURATION_SEC` and `REPETITIONS`; the current checked-in dataset is only a smoke/discovery matrix.
-
-Phase 4b cleanup/isolation run:
-
-```bash
-RESULTS_DIR=./results/phase4b_cleanup DURATION_SEC=1 REPETITIONS=1 \
-  ./scripts/run_phase4b_cleanup_experiments.sh
-
-RESULTS_DIR=./results/phase4b_cleanup \
-  python3 scripts/parse_phase2_results.py
-```
+The larger Phase 2/4/5 matrices are historical checked-in artifacts. Their original
+batch automation is unavailable in this snapshot. Add replacement tooling before
+attempting report-grade automated regeneration.
 
 ## Current Dataset
 
 - Phase 2 parsed data rows: 272 (`results/phase2/summary.csv` has 273 file lines including the header)
 - Focused trade-off runs: 144
 - Application scenario runs: 32
-- Correctness status: PASS
+- Historical stock/sold invariant status: PASS
 - Invariant violations: 0
-- Duplicate commits: 0
+- Historical `duplicate_commit_count` fields: 0, but the pre-fix detector was not active enough to support a historical no-duplicate claim
 - Phase 3 rerun rows: 32
 - Phase 3 successful rerun rows: 32
 - Phase 1 legacy `/stat` rows parsed with Phase 3: 4
 - Phase 3 total parsed data rows: 36 (`results/phase3/two_node_soft_roce_summary.csv` has 37 file lines including the header)
 - Phase 3 transport evidence: RC QP metadata, Ethernet link type, GID index 1, local GID containing `192.168.56.102`, remote GID containing `192.168.56.101`
 - Phase 4 preliminary rows: 40
-- Phase 4 correctness status: PASS after object-locking fix; smoke/discovery rows preserve invariants and duplicate-commit checks
+- Phase 4 historical invariant status: PASS after object-locking fix
 - Phase 4b cleanup rows: 24
-- Phase 4b correctness status: PASS; invariant violations 0, duplicate commits 0
+- Phase 4b historical invariant status: PASS; stock/sold invariant violations 0
 - Phase 5 latency overhead smoke rows: 9
 - Phase 5 latency overhead scope: 1-second, 2-thread smoke only; not final performance evidence
 - Phase 5 latency default sample size: 10,000; smoke sample size: 5,000 or lower
 - Phase 5 adaptive routing smoke rows: 3
 - Phase 5 adaptive calibration rows: 54
-- Phase 5 adaptive calibration correctness: PASS; invariant violations 0, duplicate commits 0
+- Phase 5 adaptive calibration historical invariant status: PASS; stock/sold invariant violations 0
 - Selected adaptive default: `routing_margin_us=5`, `cost_window_ms=500`, `min_samples_before_adapt=100`, `adaptive_object_scope=shard`, `hot_shards=8`
 - Phase 5 scripted phase-change approximation rows: 18
-- Phase 5 scripted phase-change approximation correctness: PASS; invariant violations 0, duplicate commits 0
+- Phase 5 scripted phase-change approximation historical invariant status: PASS; stock/sold invariant violations 0
 - Phase 5 adaptive routing status: calibrated prototype included in the reduced final matrix; performance claims must be based on per-workload final-matrix analysis and remain prototype-relative
 - Reduced final focused matrix rows: 540
-- Reduced final focused matrix correctness: PASS; invariant violations 0, duplicate commits 0
+- Reduced final focused matrix historical invariant status: PASS; stock/sold invariant violations 0
 - Reduced final focused matrix scope: 10-second runs, 3 repetitions, threads 1/2/4, historical bounded `reservoir` alias with sample size 10,000
 - Reduced final focused matrix status: completed; this is not a publication-grade full evaluation
 - Final sold-counter comparison rows: 48
-- Final sold-counter comparison correctness: PASS; invariant violations 0, duplicate commits 0
+- Final sold-counter comparison historical invariant status: PASS; stock/sold invariant violations 0
 - Final sold-counter comparison path: `results/final_sold_counter_comparison/`
 - Final sold-counter comparison status: completed; compare `global` vs `per_product` only as a shared-metadata bottleneck study
 
@@ -283,6 +227,7 @@ RESULTS_DIR=./results/phase4b_cleanup \
 
 - `abort_rate = 0.000` does not mean there were no conflicts. Check lock failures, validation failures, and retries.
 - Counter schema version 2 computes `abort_rate = (final_abort_tx + business_abort_tx) / logical_tx`. Historical rows used a mixed retry-attempt denominator and must be compared only with an explicit schema-sensitive migration.
+- Historical matrix rows passed stock/sold invariant checks. Their `duplicate_commit_count` field was 0, but the detector was not active enough to support a historical no-duplicate-commit claim. Post-fix CTest and smoke runs validate the scoped detector separately.
 - `hot_path_ratio = 0.000` is expected for baseline/backoff/hot-detection-only because only hybrid uses server arbitration.
 - Hybrid often improves high-contention scenarios by serializing hot transactions.
 - Backoff is still useful as a low-overhead mitigation for moderate contention.
@@ -298,6 +243,7 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Current Phase 2 benchmark path is a local RDMA-style DSM/OCC simulation, not a full two-node Soft-RoCE DSM benchmark.
 - Phase 3 validates standalone perftest READ/WRITE/SEND/BW transport, not the project DSM transaction path.
 - No remote atomic/CAS validation row is included in Phase 3 yet.
+- Dormant `RDMAConnection` remains quarantined: source-level cleanup is improved, but usable default PD/CQ ownership for MR registration and CQ polling is not implemented or two-node validated.
 - Hybrid arbitration now supports global, per-object, and per-shard arbitration. Future work can still improve production-grade scheduling, fairness, and recovery semantics.
 - Phase 4 adds queue-level arbitration, but the benchmark is still a local prototype and still has shared application objects such as `sold_count`; do not treat short Phase 4 numbers as final scalability results.
 - The first Phase 4 per-object/per-shard attempt exposed a lock-discipline bug between hot arbitration and OCC cold path. It was fixed by using deterministic per-object data locks in both paths before regenerating the checked-in Phase 4 summaries.
@@ -306,7 +252,7 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - `bounded_rotation` is not statistically uniform Algorithm R reservoir sampling. Even this bounded mode has measurable overhead and must be disclosed. The historical `reservoir` value remains an input alias. The default sample size is 10,000.
 - Adaptive routing based on retry cost versus queue cost is implemented as a minimal prototype, calibrated, and included in the reduced final matrix. It is not yet a mature production routing policy.
 - No crash recovery or durability.
-- `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.
+- Historical harnesses used `/usr/bin/time -v` when `perf stat` failed under `perf_event_paranoid=4`; those harnesses are not bundled in this snapshot.
 
 ## Code Fixes Applied 2026-06-01
 
@@ -373,56 +319,19 @@ results/phase7_two_node_dsm_transaction/correctness_report.md
 
 Allowed future claim: a minimal DSM/OCC transaction path can run over two-node Soft-RoCE. Still forbidden: hardware RDMA performance, production DSM, cluster scalability, and durability.
 
-## Reproduction Commands for Completed Current-cycle Artifacts
+## Historical Artifact Regeneration
 
-Adaptive calibration reproduction command:
-
-```bash
-DURATION_SEC=5 REPETITIONS=2 LATENCY_SAMPLE_SIZE=10000 \
-  ./scripts/run_phase5_adaptive_calibration.sh
-```
-
-Phase-change approximation reproduction command:
-
-```bash
-RESULTS_DIR=./results/phase5_adaptive_routing/phase_change_approx \
-  DURATION_SEC=5 REPETITIONS=2 LATENCY_SAMPLE_SIZE=10000 \
-  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 HOT_SHARDS=8 \
-  ./scripts/run_phase5_phase_change_approx.sh
-```
-
-Reduced final matrix reproduction command:
-
-```bash
-DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
-  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
-  ./scripts/run_final_focused_matrix.sh
-```
-
-Final matrix smoke subset reproduction command:
-
-```bash
-FINAL_MATRIX_SMOKE=1 RESULTS_DIR=./results/final_focused_matrix_smoke \
-  DURATION_SEC=10 REPETITIONS=3 LATENCY_SAMPLE_SIZE=10000 \
-  ROUTING_MARGIN_US=5 COST_WINDOW_MS=500 \
-  ./scripts/run_final_focused_matrix.sh
-```
-
-Do not run the reduced final matrix with full latency sampling.
-
-Controlled sold-counter comparison reproduction command:
-
-```bash
-./scripts/run_sold_counter_comparison.sh
-```
-
-This comparison is complete in `results/final_sold_counter_comparison/`.
+The Phase 5 calibration, phase-change approximation, reduced final matrix, and
+sold-counter comparison artifacts are checked in under `results/`. Their historical
+batch scripts are not present in this repository snapshot. The direct local smoke
+matrix above and CTest suite are executable; report-grade artifact regeneration
+requires replacement tooling. Do not use full latency sampling for future matrices.
 
 ## Version Control Routine
 
 ```bash
 git status --short
-git add experiments include scripts src README.md report.md HANDOFF.md paper.md PROJECT_PLAN_STATUS.md docs
+git add experiments include src README.md HANDOFF.md paper.md paper_zh.md PROJECT_PLAN_STATUS.md docs
 git add -f results/phase5_latency_sampling results/phase5_adaptive_routing results/final_focused_matrix results/final_sold_counter_comparison results/final_project_convergence_summary.md results/final_audit_bug_report.md
 git commit -m "final: consolidate evaluation and audit"
 git push origin HEAD
@@ -430,7 +339,7 @@ git push origin HEAD
 
 ## Next Research Steps
 
-1. Use `paper.md` as the current final research report and update `report.md` only if a full Chinese final report is required.
+1. Use `paper.md` as the canonical final research report and `paper_zh.md` as its Chinese version.
 2. Keep the audit bug report visible; apply code fixes only after explicit authorization or `APPLY_CODE_FIXES=1`.
 3. Optionally run extended validation with longer duration/repetitions if requested.
 4. Treat project-level two-node RDMA wrapper validation as Future Phase 6, not current-cycle work.

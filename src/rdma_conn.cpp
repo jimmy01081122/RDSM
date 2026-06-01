@@ -24,7 +24,8 @@ namespace {
 void destroy_impl(RDMAConnectionImpl* impl) {
     if (!impl) return;
 
-    if (impl->qp) ibv_destroy_qp(impl->qp);
+    if (impl->cm_id && impl->cm_id->qp) rdma_destroy_qp(impl->cm_id);
+    impl->qp = nullptr;
     for (auto& p : impl->mr_map) {
         if (p.second) ibv_dereg_mr(p.second);
     }

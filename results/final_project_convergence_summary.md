@@ -51,16 +51,16 @@ The comparison uses:
 - Sample size: 10000
 - Adaptive defaults: `routing_margin_us=5`, `cost_window_ms=500`, `hot_shards=8`
 
-All 48 rows are correctness-clean. The conclusion is a data-model lesson: a global shared metadata object can mask sharded arbitration benefits; per-product counters isolate arbitration queue behavior better, but the performance effect is workload- and thread-count-dependent.
+All 48 historical rows passed stock/sold invariant checks. The conclusion is a data-model lesson: a global shared metadata object can mask sharded arbitration benefits; per-product counters isolate arbitration queue behavior better, but the performance effect is workload- and thread-count-dependent.
 
-## 5. Correctness-clean Status
+## 5. Historical Invariant Status
 
-All current final rows are correctness-clean:
+All current final historical rows passed stock/sold invariant checks:
 
-- `results/final_focused_matrix/summary.csv`: invariant violations 0, duplicate commits 0.
-- `results/final_sold_counter_comparison/summary.csv`: invariant violations 0, duplicate commits 0.
+- `results/final_focused_matrix/summary.csv`: invariant violations 0.
+- `results/final_sold_counter_comparison/summary.csv`: invariant violations 0.
 
-Important audit caveat: `duplicate_commit_count` is currently a dead counter in code, so the stronger correctness claim should rely on implemented invariants such as stock/sold consistency unless the duplicate detector is fixed and validated.
+Important audit caveat: these historical rows contain `duplicate_commit_count=0`, but they were generated before the scoped detector was activated. They cannot support a historical no-duplicate-commit claim. Post-fix CTest and smoke runs validate the scoped same-`tx_id` duplicate-application detector separately.
 
 ## 6. Future Phase Exclusion
 
@@ -73,14 +73,12 @@ Neither phase was implemented or run in this cycle.
 
 ## 7. Optional Remaining Work
 
-- Translate and integrate `paper.md` into a full final Chinese `report.md` if required.
 - Run longer-duration or higher-repetition validation only if explicitly requested.
-- Apply audit code fixes after explicit authorization or `APPLY_CODE_FIXES=1`.
 
 ## 8. Future Work
 
 - Implement project-level two-node RDMA wrapper validation.
 - Implement two-node DSM transaction over RDMA verbs.
-- Replace bounded rotating latency sampling with Algorithm R or rename the CLI/reporting mode.
-- Repair dead counters and the mixed `attempted_tx` denominator before making stronger correctness/statistical claims.
+- Optionally add a separate uniform Algorithm R sampling mode.
+- Regenerate a focused post-fix matrix before making stronger duplicate-commit or cross-schema statistical claims.
 - Add production concerns such as fairness, crash recovery, durability, and stronger workload coverage only after the current evidence boundary is preserved.

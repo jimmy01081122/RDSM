@@ -1,10 +1,6 @@
-# RDSM Next Implementation Prompt
+# RDSM Next Implementation
 
-Use this prompt with an AI coding agent after the 2026-06-01 scoped fix pass.
 
----
-
-You are maintaining `/home/node1/RDSM`, a shared-memory concurrency-control prototype intended to inform a future RDMA DSM design. The current environment cannot validate hardware RNIC behavior. Keep protocol-level claims separate from transport and hardware claims.
 
 ## Goal
 

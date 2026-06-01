@@ -52,7 +52,7 @@ Files: `README.md`, `HANDOFF.md`, `PROJECT_PLAN_STATUS.md`, `paper.md`,
 result summaries
 
 - Reframed pre-fix matrix rows as historical stock/sold invariant evidence.
-- Removed historical no-duplicate-commit claims from pre-fix result descriptions.
+- Removed historical no-duplicate-commit claims from primary documents and completed a strict follow-up sweep of secondary pre-fix result descriptions.
 - Documented that post-fix CTest and smoke runs validate the scoped duplicate-application detector separately.
 - Removed current-use references to unavailable runner/parser scripts.
 - Replaced them with direct build, CTest, local smoke, and manual Phase 1 perftest commands.

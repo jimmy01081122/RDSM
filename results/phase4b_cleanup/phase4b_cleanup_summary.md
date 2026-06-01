@@ -4,9 +4,9 @@ Phase 4b is cleanup/isolation validation, not a new performance claim. It compar
 
 - Rows: 24
 - Invariant violations: 0
-- Duplicate commits: 0
+- Historical `duplicate_commit_count` fields: 0. These pre-fix fields cannot support a historical no-duplicate-commit claim.
 
-| Workload | Sold counter | Mode | Shards | Appendix | Runs | Mean tx/sec | Hot path | p99 queue wait us | p95 queue length | p95 service us | Invariant violations | Duplicate commits |
+| Workload | Sold counter | Mode | Shards | Appendix | Runs | Mean tx/sec | Hot path | p99 queue wait us | p95 queue length | p95 service us | Invariant violations | Historical duplicate counter |
 |---|---|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | high_hot16_write100 | global | global | 1 | false | 1 | 889347 | 1.000 | 96.00 | 3.00 | 1.00 | 0 | 0 |
 | high_hot16_write100 | global | global | 1 | true | 1 | 1888816 | 1.000 | 1.00 | 7.00 | 1.00 | 0 | 0 |

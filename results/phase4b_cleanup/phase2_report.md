@@ -18,8 +18,10 @@ The current hybrid arbitration implementation does not support crash recovery or
 ## Correctness
 
 - Invariant violations: 0
-- Duplicate commits: 0
-- Status: PASS
+- Historical `duplicate_commit_count` fields: 0
+- Stock/sold invariant status: PASS
+
+These pre-fix counter fields cannot support a historical no-duplicate-commit claim. Post-fix CTest and smoke runs validate the scoped detector separately.
 
 Checked invariants: stock remains non-negative by unsigned state transition, user balance does not underflow, and `sold_count + final_stock = initial_stock` across all products.
 

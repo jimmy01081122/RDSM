@@ -2,6 +2,10 @@
 
 This is a short discovery/smoke dataset. It must not be used as a final performance claim.
 
+Historical snapshot note: `Duplicate commits` table values are pre-fix
+`duplicate_commit_count` fields. They cannot support a historical
+no-duplicate-commit claim.
+
 | Workload | Mode | Shards | Runs | Threads | Mean tx/sec | Hot path | p99 queue wait us | p95 queue length | p95 service us | Invariant violations | Duplicate commits |
 |---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
 | high_hot16_write100 | global | 1 | 2 | 8;16 | 1818104 | 1.000 | 1.00 | 11.00 | 1.00 | 0 | 0 |

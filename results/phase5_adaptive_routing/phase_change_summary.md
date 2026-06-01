@@ -5,6 +5,10 @@ Scope: consecutive controlled processes only. This approximates phase changes ac
 
 This is a multi-process scripted approximation. It is not evidence of continuous in-process adaptive state transitions. It is useful only as a low-risk approximation of phase changes.
 
+Historical snapshot note: `Duplicates` table values are pre-fix
+`duplicate_commit_count` fields. They cannot support a historical
+no-duplicate-commit claim.
+
 | Scenario | Phase | Rep | Workload | tx/sec | Samples | Invariants | Duplicates | Route OCC | Route Arb | Insufficient | Oscillation |
 |---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | phase_change_uniform_to_hot_to_uniform | 1 | 1 | low_uniform_read95 | 772446 | 10000 | 0 | 0 | 3862231 | 0 | 0 | 0 |

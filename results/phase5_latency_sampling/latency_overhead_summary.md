@@ -4,6 +4,8 @@ Scope: 1-second, 2-thread smoke check only. These rows validate measurement plum
 
 Historical snapshot note: table rows retain the original `reservoir` CLI alias.
 The current canonical name for that bounded rotating implementation is `bounded_rotation`.
+`Duplicates` table values are pre-fix `duplicate_commit_count` fields and cannot
+support a historical no-duplicate-commit claim.
 
 | Workload | Sampling | Sample size | Samples | tx/sec | Delta vs off | Abort rate | Retry/commit | Max RSS KB | Invariants | Duplicates |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|

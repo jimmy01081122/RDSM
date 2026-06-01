@@ -326,15 +326,16 @@ int RDMAConnection::rdma_write(uint64_t remote_addr, uint32_t remote_rkey,
 
 int RDMAConnection::rdma_compare_swap(uint64_t remote_addr, uint32_t remote_rkey,
                                       uint64_t compare_val, uint64_t swap_val,
+                                      void* local_result_addr, uint32_t local_result_lkey,
                                       uint64_t wr_id) {
     if (!connected_ || !context_) return -1;
 
     auto impl = static_cast<RDMAConnectionImpl*>(context_);
 
     struct ibv_sge sge = {};
-    sge.addr = (uintptr_t)&swap_val;
+    sge.addr = (uintptr_t)local_result_addr;
     sge.length = sizeof(uint64_t);
-    sge.lkey = 0;  // Local lkey (dummy)
+    sge.lkey = local_result_lkey;
 
     struct ibv_send_wr wr = {};
     wr.wr_id = wr_id;

@@ -53,8 +53,8 @@ Last updated: 2026-05-28 UTC
 - Phase 2 is still a local RDMA-style DSM/OCC protocol benchmark, not an end-to-end two-node DSM-over-verbs benchmark.
 - Phase 1 validates two-node Soft-RoCE verbs transport only. It proves the node2 -> node1 RC path works, but it does not measure distributed DSM transaction throughput.
 - Phase 5 transaction latency sampling is prototype-relative. It is useful for comparing algorithms under identical local conditions, but it is not hardware RDMA latency evidence.
-- Full transaction sampling grows with transaction count and can exhaust memory quickly. It is debug-only and guarded; use the bounded `reservoir` CLI mode for latency analysis.
-- The current `reservoir` implementation is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Treat p95/p99 as prototype-relative tail indicators under the same sampling policy.
+- Full transaction sampling grows with transaction count and can exhaust memory quickly. It is debug-only and guarded; use `bounded_rotation` for latency analysis.
+- `bounded_rotation` is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. The historical `reservoir` CLI value remains an alias. Treat p95/p99 as prototype-relative tail indicators under the same sampling policy.
 - Do not run final matrix with `--latency-sampling=full`.
 - Current absence: no project-level two-node DSM-over-verbs path.
 - Current absence: no project-level remote CAS validation.
@@ -95,7 +95,7 @@ Last updated: 2026-05-28 UTC
 - Sold counter mode: `--sold-counter-mode global|per_product`
 - Phase 4 metrics: queue wait p50/p95/p99/max, queue length p50/p95/p99, service time p50/p95/p99/max
 - Phase 5 latency sampler: `include/latency_sampler.h`, `src/latency_sampler.cpp`
-- Phase 5 latency CLI: `--latency-sampling off|full|reservoir`, `--latency-sample-size`, `--latency-output`, `--allow-dangerous-full-sampling`
+- Phase 5 latency CLI: `--latency-sampling off|full|bounded_rotation|reservoir`, `--latency-sample-size`, `--latency-output`, `--allow-dangerous-full-sampling`
 - Phase 5 latency summary fields: transaction p50/p95/p99/max, committed-only latency, abort latency, path-specific cold/hot latency, retry percentiles, and sample count
 - Phase 5 adaptive routing prototype: `hybrid_adaptive_arbitration_occ`
 - Phase 5 adaptive routing CLI: `--adaptive-routing on|off`, `--routing-margin-us`, `--cost-window-ms`, `--min-samples-before-adapt`, `--adaptive-object-scope global|shard|object`
@@ -143,7 +143,7 @@ mkdir -p results/phase5_latency_sampling/smoke
   --hot-products 4 --hot-access-prob 0.85 \
   --threads 2 --write-ratio 0.5 \
   --duration-sec 1 --max-retries 20 \
-  --latency-sampling reservoir \
+  --latency-sampling bounded_rotation \
   --latency-sample-size 1000 \
   --latency-output results/phase5_latency_sampling/smoke/latency_samples.csv
 ```
@@ -272,7 +272,7 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - Phase 5 adaptive routing status: calibrated prototype included in the reduced final matrix; performance claims must be based on per-workload final-matrix analysis and remain prototype-relative
 - Reduced final focused matrix rows: 540
 - Reduced final focused matrix correctness: PASS; invariant violations 0, duplicate commits 0
-- Reduced final focused matrix scope: 10-second runs, 3 repetitions, threads 1/2/4, bounded `reservoir` CLI sampling with sample size 10,000
+- Reduced final focused matrix scope: 10-second runs, 3 repetitions, threads 1/2/4, historical bounded `reservoir` alias with sample size 10,000
 - Reduced final focused matrix status: completed; this is not a publication-grade full evaluation
 - Final sold-counter comparison rows: 48
 - Final sold-counter comparison correctness: PASS; invariant violations 0, duplicate commits 0
@@ -282,6 +282,7 @@ RESULTS_DIR=./results/phase4b_cleanup \
 ## Interpretation Notes
 
 - `abort_rate = 0.000` does not mean there were no conflicts. Check lock failures, validation failures, and retries.
+- Counter schema version 2 computes `abort_rate = (final_abort_tx + business_abort_tx) / logical_tx`. Historical rows used a mixed retry-attempt denominator and must be compared only with an explicit schema-sensitive migration.
 - `hot_path_ratio = 0.000` is expected for baseline/backoff/hot-detection-only because only hybrid uses server arbitration.
 - Hybrid often improves high-contention scenarios by serializing hot transactions.
 - Backoff is still useful as a low-overhead mitigation for moderate contention.
@@ -302,10 +303,21 @@ RESULTS_DIR=./results/phase4b_cleanup \
 - The first Phase 4 per-object/per-shard attempt exposed a lock-discipline bug between hot arbitration and OCC cold path. It was fixed by using deterministic per-object data locks in both paths before regenerating the checked-in Phase 4 summaries.
 - `sold_counter_mode=global` intentionally preserves the application-level shared metadata bottleneck. `sold_counter_mode=per_product` is only for arbitration-isolation validation.
 - Full latency sampling is for short smoke/debug runs only. The benchmark rejects full sampling when `duration_sec > 2` or `threads > 2` unless `--allow-dangerous-full-sampling` is passed.
-- The `reservoir` CLI mode is currently implemented as a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Even this bounded mode has measurable overhead and must be disclosed. The default sample size is 10,000.
+- `bounded_rotation` is not statistically uniform Algorithm R reservoir sampling. Even this bounded mode has measurable overhead and must be disclosed. The historical `reservoir` value remains an input alias. The default sample size is 10,000.
 - Adaptive routing based on retry cost versus queue cost is implemented as a minimal prototype, calibrated, and included in the reduced final matrix. It is not yet a mature production routing policy.
 - No crash recovery or durability.
 - `perf stat` may fail when `perf_event_paranoid=4`; scripts fall back to `/usr/bin/time -v`.
+
+## Code Fixes Applied 2026-06-01
+
+- OCC partial lock acquisition now rolls back owned lock bits and records lock-acquisition aborts.
+- Latency histogram buckets, arbitrator counters, and object count are atomic where shared reads or writes can occur.
+- `latency_us_p50/p95/p99` compatibility keys now emit real sampler percentiles; synthetic average-derived p95/p99 fields were removed.
+- Duplicate-commit and adaptive hot-to-OCC route instrumentation are active. The latter is a route-level interference proxy.
+- Zipfian distributions are cached per thread, ineffective in-mutex read spinning was removed, and arbitrator aborts are counted once.
+- `bounded_rotation` is the canonical CLI and JSON metadata name; the historical `reservoir` value remains an accepted alias.
+- Counter schema version 2 separates logical transactions, OCC commit attempts, failed OCC attempts, final aborts, and business aborts. Historical mixed-denominator `abort_rate` rows are schema-sensitive.
+- Dormant RDMA CAS now requires a caller-provided registered local result buffer and `lkey`; `RDMAConnection` copying is disabled. This is build verification only, not hardware validation.
 
 ## Future Phase 6: Project-level Two-node RDMA Wrapper Validation
 

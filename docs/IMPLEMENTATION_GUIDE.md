@@ -534,7 +534,7 @@ for algo in baseline_occ backoff_occ hybrid_static_arbitration_occ_per_shard_8 h
         --algorithm $algo \
         --threads $threads \
         --duration-sec 10 \
-        --latency-sampling reservoir \
+        --latency-sampling bounded_rotation \
         --latency-sample-size 10000 \
         > results/tpcc_${algo}_t${threads}_rep${rep}.json
     done

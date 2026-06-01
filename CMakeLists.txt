@@ -19,8 +19,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${LIBIBVERBS_INCLUDE_DIRS})
 include_directories(${LIBRDMACM_INCLUDE_DIRS})
 
-# Source files
-set(SOURCES
+# Shared source files
+set(CORE_SOURCES
     src/rdma_conn.cpp
     src/dsm_object.cpp
     src/occ_engine.cpp
@@ -28,21 +28,32 @@ set(SOURCES
     src/backoff.cpp
     src/hot_detection.cpp
     src/server_arbitration.cpp
-    experiments/phase2_dsm_benchmark.cpp
 )
 
-# Main executable
-add_executable(phase2_dsm_benchmark ${SOURCES})
-
-target_link_libraries(phase2_dsm_benchmark
+add_library(rdsm_core STATIC ${CORE_SOURCES})
+target_link_libraries(rdsm_core
     Threads::Threads
     ${LIBIBVERBS_LIBRARIES}
     ${LIBRDMACM_LIBRARIES}
 )
 
-target_include_directories(phase2_dsm_benchmark PRIVATE
-    ${LIBIBVERBS_INCLUDE_DIRS}
-    ${LIBRDMACM_INCLUDE_DIRS}
+# Main executable
+add_executable(phase2_dsm_benchmark experiments/phase2_dsm_benchmark.cpp)
+target_link_libraries(phase2_dsm_benchmark
+    rdsm_core
+)
+
+enable_testing()
+
+add_executable(rdsm_regression_tests tests/rdsm_regression_tests.cpp)
+target_link_libraries(rdsm_regression_tests rdsm_core)
+
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+add_test(NAME rdsm_regression_tests COMMAND rdsm_regression_tests)
+add_test(
+    NAME benchmark_json_compat
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/check_benchmark_json.py
+            $<TARGET_FILE:phase2_dsm_benchmark>
 )
 
 # Installation

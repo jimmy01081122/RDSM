@@ -35,6 +35,8 @@ struct Transaction {
     bool committed;
 };
 
+struct OCCEngineTestAccess;
+
 class OCCEngine {
 public:
     OCCEngine(DSMObjectStore* store);
@@ -57,6 +59,8 @@ public:
     }
 
 private:
+    friend struct OCCEngineTestAccess;
+
     DSMObjectStore* store_;
     std::atomic<uint64_t> next_tx_id_;
 

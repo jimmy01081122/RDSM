@@ -11,7 +11,7 @@
 enum class LatencySamplingMode {
     Off,
     Full,
-    Reservoir,
+    BoundedRotation,  // Deterministic modulo replacement with recency bias.
 };
 
 struct LatencySample {

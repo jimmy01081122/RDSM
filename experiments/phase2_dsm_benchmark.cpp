@@ -177,12 +177,20 @@ InventoryWorkload::OrderInfo InventoryWorkload::generate_order(int thread_id) {
         info.product_id = prod_dis(gen);
     } else {
         const double theta = config_.access_pattern.find("0.99") != std::string::npos ? 0.99 : 0.8;
-        std::vector<double> weights(config_.num_products);
-        for (uint32_t i = 0; i < config_.num_products; ++i) {
-            weights[i] = 1.0 / std::pow(i + 1, theta);
+        // Cache Zipfian distribution per-thread to avoid O(num_products) rebuild per transaction.
+        static thread_local double cached_theta = -1.0;
+        static thread_local uint32_t cached_num_products = 0;
+        static thread_local std::discrete_distribution<uint32_t> cached_dist;
+        if (cached_theta != theta || cached_num_products != config_.num_products) {
+            std::vector<double> weights(config_.num_products);
+            for (uint32_t i = 0; i < config_.num_products; ++i) {
+                weights[i] = 1.0 / std::pow(i + 1, theta);
+            }
+            cached_dist = std::discrete_distribution<uint32_t>(weights.begin(), weights.end());
+            cached_theta = theta;
+            cached_num_products = config_.num_products;
         }
-        std::discrete_distribution<uint32_t> prod_dis(weights.begin(), weights.end());
-        info.product_id = prod_dis(gen);
+        info.product_id = cached_dist(gen);
     }
 
     return info;
@@ -396,9 +404,8 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
                                        LatencySample sample,
                                        const InventoryWorkload::OrderInfo& order,
                                        uint64_t start_us,
-                                       bool hot_candidate) {
+    bool hot_candidate) {
     auto stats = store->get_global_stats();
-    stats->attempted_tx++;
     stats->hot_path_tx++;
     stats->server_arbitrated_tx++;
     sample.objects_touched = order_object_count(order);
@@ -436,7 +443,7 @@ static int run_server_arbitrated_order(const BenchmarkConfig& config,
     ObjectHeader* balance = store->get_object_header(config.num_products + order.user_id);
     ObjectHeader* sold = store->get_object_header(sold_object_id(config, order.product_id));
     if (!stock || !balance || !sold) {
-        stats->aborted_tx++;
+        stats->final_abort_tx++;
         uint64_t service_us = OCCEngine::get_time_us() - service_start_us;
         stats->server_service_time_total_us += service_us;
         stats->server_service_time_count++;
@@ -574,7 +581,7 @@ static void run_occ_order(const BenchmarkConfig& config,
             obj_stats->abort_count++;
         }
         if (retry == config.max_retries) {
-            store->get_global_stats()->aborted_tx++;
+            store->get_global_stats()->final_abort_tx++;
             sample.tx_end_ns = LatencySampler::now_ns();
             sample.retry_count = retry;
             sample.final_status = "max_retry_abort";
@@ -598,6 +605,8 @@ int BenchmarkRunner::run_benchmark() {
             while (std::chrono::steady_clock::now() < end_time) {
                 const uint64_t sampled_tx_id = latency_sampler_->next_tx_id();
                 InventoryWorkload::OrderInfo order = workload_->generate_order(t);
+                // Count each generated order once, before either routing path.
+                store_->get_global_stats()->logical_tx++;
                 local_tx_count++;
                 if (should_refresh_hot_objects(config_, local_tx_count)) {
                     refresh_hot_objects(config_, store_.get());
@@ -622,6 +631,9 @@ int BenchmarkRunner::run_benchmark() {
                                                 order, OCCEngine::get_time_us(), hot_candidate);
                     update_adaptive_state(order.product_id, true);
                 } else {
+                    if (config_.hybrid_enabled && hot_candidate) {
+                        store_->get_global_stats()->hot_cold_interference_count++;
+                    }
                     auto sample = base_latency_sample(
                         config_, sampled_tx_id, t,
                         config_.adaptive_routing_enabled ? "adaptive_occ" : "cold_occ");
@@ -648,20 +660,19 @@ RunResult BenchmarkRunner::get_result() {
     auto stats = store_->get_global_stats();
 
     RunResult result{};
-    result.attempted_tx = stats->attempted_tx;
+    result.logical_tx = stats->logical_tx;
+    result.occ_attempts = stats->occ_attempts;
+    result.occ_failed_attempts = stats->occ_failed_attempts;
+    result.final_abort_tx = stats->final_abort_tx;
+    result.attempted_tx = result.logical_tx;
     result.committed_tx = stats->committed_tx;
-    result.aborted_tx = stats->aborted_tx;
+    result.aborted_tx = result.final_abort_tx;
     result.business_abort_tx = stats->business_abort_tx;
-    result.abort_rate = (stats->attempted_tx > 0) ?
-        static_cast<double>(stats->aborted_tx + stats->business_abort_tx) / stats->attempted_tx : 0.0;
+    result.abort_rate = (result.logical_tx > 0) ?
+        static_cast<double>(result.final_abort_tx + result.business_abort_tx) / result.logical_tx : 0.0;
     result.retry_per_commit = (stats->committed_tx > 0) ?
         static_cast<double>(stats->retry_count) / stats->committed_tx : 0.0;
 
-    if (stats->committed_tx > 0) {
-        result.latency_p50_us = static_cast<double>(stats->total_commit_latency_us) / stats->committed_tx;
-        result.latency_p95_us = result.latency_p50_us * 1.5;
-        result.latency_p99_us = result.latency_p50_us * 2.0;
-    }
     if (latency_sampler_) {
         result.latency_summary = latency_sampler_->summary();
     }
@@ -676,8 +687,8 @@ RunResult BenchmarkRunner::get_result() {
     result.hot_object_count = hot_count;
     result.hot_path_tx = stats->hot_path_tx;
     result.cold_path_tx = stats->cold_path_tx;
-    result.hot_path_ratio = (stats->attempted_tx > 0) ?
-        static_cast<double>(stats->hot_path_tx) / stats->attempted_tx : 0.0;
+    result.hot_path_ratio = (result.logical_tx > 0) ?
+        static_cast<double>(stats->hot_path_tx) / result.logical_tx : 0.0;
     auto wait_samples = store_->queue_wait_samples();
     auto length_samples = store_->queue_length_samples();
     auto service_samples = store_->service_time_samples();
@@ -731,7 +742,7 @@ static void print_help(const char* argv0) {
               << "--access-pattern uniform|zipfian_0.8|zipfian_0.99\n"
               << "--hot-products N --hot-access-prob P --duration-sec N --max-retries N\n"
               << "--sold-counter-mode global|per_product\n"
-              << "--latency-sampling off|full|reservoir --latency-sample-size N --latency-output FILE\n"
+              << "--latency-sampling off|full|bounded_rotation|reservoir --latency-sample-size N --latency-output FILE\n"
               << "--allow-dangerous-full-sampling (debug-only override)\n"
               << "--algorithm baseline_occ|backoff_occ|hot_detection_occ|hybrid_arbitration_occ|hybrid_adaptive_arbitration_occ\n"
               << "--backoff-policy NO_BACKOFF|FIXED_BACKOFF|EXPONENTIAL_BACKOFF|RANDOMIZED_EXPONENTIAL_BACKOFF|CONTENTION_AWARE_BACKOFF\n"
@@ -758,7 +769,7 @@ static BenchmarkConfig parse_args(int argc, char* argv[]) {
     config.workload_name = "unspecified";
     config.appendix_only = false;
     config.appendix_reason = "";
-    config.latency_sampling_mode = LatencySamplingMode::Reservoir;
+    config.latency_sampling_mode = LatencySamplingMode::BoundedRotation;
     config.latency_sample_size = 10000;
     config.latency_output = "";
     config.allow_dangerous_full_sampling = false;
@@ -925,6 +936,13 @@ int main(int argc, char* argv[]) {
     output.add("adaptive_object_scope", config.adaptive_object_scope);
     output.add("appendix_only", config.appendix_only);
     output.add("appendix_reason", config.appendix_reason);
+    output.add("counter_schema_version", 2LL);
+    output.add("attempted_tx_semantics", "compatibility alias for logical_tx");
+    output.add("aborted_tx_semantics", "compatibility alias for final_abort_tx");
+    output.add("logical_tx", (long long)result.logical_tx);
+    output.add("occ_attempts", (long long)result.occ_attempts);
+    output.add("occ_failed_attempts", (long long)result.occ_failed_attempts);
+    output.add("final_abort_tx", (long long)result.final_abort_tx);
     output.add("attempted_tx", (long long)result.attempted_tx);
     output.add("committed_tx", (long long)result.committed_tx);
     output.add("aborted_tx", (long long)result.aborted_tx);
@@ -935,9 +953,9 @@ int main(int argc, char* argv[]) {
     output.add("abort_rate", result.abort_rate);
     output.add("retry_per_commit", result.retry_per_commit);
     output.add("committed_tx_per_sec", (double)result.committed_tx / config.duration_sec);
-    output.add("latency_us_p50", result.latency_p50_us);
-    output.add("latency_us_p95", result.latency_p95_us);
-    output.add("latency_us_p99", result.latency_p99_us);
+    output.add("latency_us_p50", result.latency_summary.tx_latency_us_p50);
+    output.add("latency_us_p95", result.latency_summary.tx_latency_us_p95);
+    output.add("latency_us_p99", result.latency_summary.tx_latency_us_p99);
     output.add("tx_latency_us_p50", result.latency_summary.tx_latency_us_p50);
     output.add("tx_latency_us_p95", result.latency_summary.tx_latency_us_p95);
     output.add("tx_latency_us_p99", result.latency_summary.tx_latency_us_p99);

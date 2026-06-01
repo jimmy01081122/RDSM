@@ -17,7 +17,7 @@ The current environment exposes 4 vCPU/core contexts. Threads 8 and 16 should be
 ```text
 duration_sec = 10s
 repetitions = 3
-latency_sampling = reservoir
+latency_sampling = reservoir  # Historical alias for canonical bounded_rotation mode
 latency_sample_size = 10000
 adaptive default = routing_margin_us=5, cost_window_ms=500, min_samples_before_adapt=100, adaptive_object_scope=shard, hot_shards=8
 ```

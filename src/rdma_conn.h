@@ -25,6 +25,8 @@ class RDMAConnection {
 public:
     RDMAConnection(const RDMAConfig& config);
     ~RDMAConnection();
+    RDMAConnection(const RDMAConnection&) = delete;
+    RDMAConnection& operator=(const RDMAConnection&) = delete;
 
     // Server-side (passive, listening)
     int listen(uint16_t port);
@@ -48,6 +50,7 @@ public:
     // Atomic CAS
     int rdma_compare_swap(uint64_t remote_addr, uint32_t remote_rkey,
                           uint64_t compare_val, uint64_t swap_val,
+                          void* local_result_addr, uint32_t local_result_lkey,
                           uint64_t wr_id);
 
     // Polling for completions

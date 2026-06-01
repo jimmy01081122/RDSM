@@ -106,6 +106,11 @@ private:
 
 struct RunResult {
     // Counters
+    uint64_t logical_tx;
+    uint64_t occ_attempts;
+    uint64_t occ_failed_attempts;
+    uint64_t final_abort_tx;
+    // Compatibility aliases: attempted_tx == logical_tx, aborted_tx == final_abort_tx.
     uint64_t attempted_tx;
     uint64_t committed_tx;
     uint64_t aborted_tx;
@@ -116,9 +121,6 @@ struct RunResult {
     double retry_per_commit;
 
     // Latency
-    double latency_p50_us;
-    double latency_p95_us;
-    double latency_p99_us;
     LatencySummary latency_summary;
 
     // Hot path

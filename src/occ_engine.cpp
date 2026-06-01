@@ -47,7 +47,6 @@ void OCCEngine::begin_transaction(Transaction& tx) {
     tx.commit_time_us = 0;
     tx.path_type = COLD_PATH;
     tx.committed = false;
-    store_->get_global_stats()->attempted_tx++;
 }
 
 int OCCEngine::read_object(Transaction& tx, uint64_t object_id, uint64_t& value, uint64_t& version) {
@@ -57,15 +56,10 @@ int OCCEngine::read_object(Transaction& tx, uint64_t object_id, uint64_t& value,
         return -1;
     }
 
-    // Wait until object is unlocked
-    int retry = 0;
-    while (obj->lock_bit && retry < 1000) {
-        retry++;
-        // Spin-wait (in real RDMA, would use RDMA READ polling)
-    }
-
+    // A real RDMA implementation would poll with RDMA READ. In this local
+    // prototype, the mutex serializes access, so a set bit means retry.
     if (obj->lock_bit) {
-        return -1;  // Timeout
+        return -1;
     }
 
     // Read value and version
@@ -92,10 +86,19 @@ void OCCEngine::write_object(Transaction& tx, uint64_t object_id, uint64_t value
 
 int OCCEngine::try_acquire_locks(Transaction& tx) {
     // Try to acquire locks on all write_set objects
+    std::vector<uint64_t> acquired_ids;
     for (auto& p : tx.write_set) {
         uint64_t object_id = p.first;
         ObjectHeader* obj = store_->get_object_header(object_id);
         if (!obj) {
+            // Roll back partial acquisition so failed commits cannot leave phantom locks.
+            for (uint64_t acquired_id : acquired_ids) {
+                ObjectHeader* acquired_obj = store_->get_object_header(acquired_id);
+                if (acquired_obj && acquired_obj->lock_owner == tx.tx_id) {
+                    acquired_obj->lock_bit = 0;
+                    acquired_obj->lock_owner = 0;
+                }
+            }
             store_->get_global_stats()->lock_fail_count++;
             tx.abort_reason = ABORT_LOCK_FAIL;
             return -1;
@@ -114,6 +117,14 @@ int OCCEngine::try_acquire_locks(Transaction& tx) {
         }
 
         if (!locked) {
+            // Roll back partial acquisition so failed commits cannot leave phantom locks.
+            for (uint64_t acquired_id : acquired_ids) {
+                ObjectHeader* acquired_obj = store_->get_object_header(acquired_id);
+                if (acquired_obj && acquired_obj->lock_owner == tx.tx_id) {
+                    acquired_obj->lock_bit = 0;
+                    acquired_obj->lock_owner = 0;
+                }
+            }
             store_->get_global_stats()->lock_fail_count++;
             auto stats = store_->get_object_stats(object_id);
             if (stats) {
@@ -122,6 +133,7 @@ int OCCEngine::try_acquire_locks(Transaction& tx) {
             tx.abort_reason = ABORT_LOCK_FAIL;
             return -1;
         }
+        acquired_ids.push_back(object_id);
     }
 
     return 0;
@@ -160,6 +172,11 @@ int OCCEngine::apply_write_set(Transaction& tx) {
             return -1;
         }
 
+        // A repeated application of the same transaction must be visible in correctness metrics.
+        if (obj->last_writer_tx_id == tx.tx_id) {
+            store_->get_global_stats()->duplicate_commit_count++;
+        }
+
         obj->value = new_value;
         obj->version++;
         obj->last_writer_tx_id = tx.tx_id;
@@ -195,21 +212,25 @@ int OCCEngine::commit_transaction(Transaction& tx) {
     // 3. Apply write_set
     // 4. Release locks
 
+    auto stats = store_->get_global_stats();
+    stats->occ_attempts++;
+
     auto data_locks = lock_transaction_objects(store_, tx);
 
     if (try_acquire_locks(tx) != 0) {
+        stats->occ_failed_attempts++;
         return -1;
     }
 
     if (validate_read_set(tx) != 0) {
         release_locks(tx);
-        store_->get_global_stats()->aborted_tx++;
+        stats->occ_failed_attempts++;
         return -1;
     }
 
     if (apply_write_set(tx) != 0) {
         release_locks(tx);
-        store_->get_global_stats()->aborted_tx++;
+        stats->occ_failed_attempts++;
         return -1;
     }
 
@@ -220,7 +241,6 @@ int OCCEngine::commit_transaction(Transaction& tx) {
     store_->get_global_stats()->total_commit_latency_us += latency_us;
 
     // Update latency histogram
-    auto stats = store_->get_global_stats();
     if (latency_us < 10) {
         stats->latency_histogram[0]++;
     } else if (latency_us < 50) {

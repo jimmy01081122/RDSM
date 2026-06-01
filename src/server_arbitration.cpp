@@ -120,7 +120,6 @@ void ServerArbitrator::process_request(ArbitrationRequest& req) {
         ObjectHeader* obj = store_->get_object_header(object_id);
         if (!obj) {
             req.committed = false;
-            arbitrated_aborts_++;
             break;
         }
 

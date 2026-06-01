@@ -28,6 +28,8 @@ struct ServerArbitrationConfig {
     uint32_t worker_threads;
 };
 
+struct ServerArbitratorTestAccess;
+
 class ServerArbitrator {
 public:
     ServerArbitrator(const ServerArbitrationConfig& config, DSMObjectStore* store);
@@ -54,6 +56,8 @@ public:
     uint64_t get_arbitrated_aborts() const { return arbitrated_aborts_; }
 
 private:
+    friend struct ServerArbitratorTestAccess;
+
     ServerArbitrationConfig config_;
     DSMObjectStore* store_;
 
@@ -70,7 +74,7 @@ private:
     // Statistics
     std::vector<uint64_t> queue_wait_us_;
     double queue_wait_p50_, queue_wait_p95_, queue_wait_p99_;
-    uint64_t arbitrated_commits_, arbitrated_aborts_;
+    std::atomic<uint64_t> arbitrated_commits_, arbitrated_aborts_;
     std::mutex stats_mutex_;
 
     // Worker thread function

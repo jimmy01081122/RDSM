@@ -40,7 +40,7 @@
 | Phase 4 | Hot/cold locking-discipline bug fix | 完成 | `src/occ_engine.cpp`、`experiments/phase2_dsm_benchmark.cpp`、`paper.md` | 已修正為 deterministic object-id lock ordering。 |
 | Phase 4b | `sold_counter_mode=global|per_product` | 完成 | `results/phase4b_cleanup/phase4b_cleanup_summary.md`、`results/final_sold_counter_comparison/` | Final controlled comparison 已完成 48 rows。 |
 | Phase 4b | Phase 4b artifact verification | 完成 | `results/phase4b_cleanup/verification_summary.md` | 已通過 correctness/metadata/metric checks。 |
-| Phase 5 | Transaction latency sampler | 完成 | `include/latency_sampler.h`、`src/latency_sampler.cpp` | CLI `reservoir` 目前是 bounded rotating sample；不可宣稱 unbiased Algorithm R reservoir sampling。 |
+| Phase 5 | Transaction latency sampler | 完成 | `include/latency_sampler.h`、`src/latency_sampler.cpp` | Canonical CLI `bounded_rotation` 是 bounded rotating sample；歷史 `reservoir` alias 仍可用。不可宣稱 unbiased Algorithm R reservoir sampling。 |
 | Phase 5 | Latency overhead smoke | 完成 | `results/phase5_latency_sampling/latency_overhead_summary.md` | Final sample size 已定為 10000；若之後改變才需重跑 overhead check。 |
 | Phase 5 | Full sampling guard | 完成 | CLI `--allow-dangerous-full-sampling` | Full sampling 僅 debug，不納入 final matrix。 |
 | Phase 5 | Adaptive routing prototype | 完成 | `hybrid_adaptive_arbitration_occ`、`results/phase5_adaptive_routing/adaptive_smoke_summary.md` | 已完成 calibration/default selection 並納入 reduced final matrix；效能主張需依 final matrix 分析。 |

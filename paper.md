@@ -131,12 +131,12 @@ Phase 5 adds bounded transaction latency sampling. Latency is prototype-relative
 
 The benchmark supports:
 
-- `--latency-sampling=off|full|reservoir`
+- `--latency-sampling=off|full|bounded_rotation|reservoir`
 - `--latency-sample-size`
 - `--latency-output`
 - `--allow-dangerous-full-sampling`
 
-The default sample size is 10,000. Full sampling is debug-only and guarded: it is rejected when `duration_sec > 2` or `threads > 2` unless explicitly overridden. The CLI mode is named `reservoir`, but the current implementation is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Therefore, final latency numbers are used as prototype-relative tail indicators under identical collection policy, not as unbiased latency-distribution estimates. Run summaries separate all-transaction latency, committed-only latency, aborted transaction latency, cold OCC latency, hot arbitration latency, retry percentiles, and sample count. Aborted transactions are not mixed into committed latency percentiles.
+The default sample size is 10,000. Full sampling is debug-only and guarded: it is rejected when `duration_sec > 2` or `threads > 2` unless explicitly overridden. The canonical mode is `bounded_rotation`; historical scripts may still pass the accepted `reservoir` alias. This is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Therefore, final latency numbers are used as prototype-relative tail indicators under identical collection policy, not as unbiased latency-distribution estimates. Run summaries separate all-transaction latency, committed-only latency, aborted transaction latency, cold OCC latency, hot arbitration latency, retry percentiles, and sample count. Aborted transactions are not mixed into committed latency percentiles.
 
 Phase 5 also adds a minimal `hybrid_adaptive_arbitration_occ` prototype. The routing rule compares estimated OCC retry cost with estimated arbitration queue cost:
 
@@ -219,7 +219,7 @@ The current reduced final matrix is correctness-clean and provides a much strong
 
 ## 12. Limitations
 
-The project has no hardware RDMA NIC, no bare-metal cluster, no RNIC offload measurements, no PCIe or switch measurements, no production durability, and no crash recovery. The local DSM/OCC benchmark is not a two-node verbs DSM transaction benchmark. The Phase 1 transport validation does not include project-level remote atomic/CAS correctness. Short smoke/discovery rows are useful for debugging and sanity checks but not final performance claims. The current latency `reservoir` mode is implemented as a bounded rotating sample, so tail-latency conclusions must be described as prototype-relative indicators rather than unbiased latency-distribution estimates.
+The project has no hardware RDMA NIC, no bare-metal cluster, no RNIC offload measurements, no PCIe or switch measurements, no production durability, and no crash recovery. The local DSM/OCC benchmark is not a two-node verbs DSM transaction benchmark. The Phase 1 transport validation does not include project-level remote atomic/CAS correctness. Short smoke/discovery rows are useful for debugging and sanity checks but not final performance claims. The latency `bounded_rotation` mode, including historical rows recorded through its `reservoir` alias, is a bounded rotating sample, so tail-latency conclusions must be described as prototype-relative indicators rather than unbiased latency-distribution estimates. Counter schema version 2 uses logical-transaction abort rates; historical mixed-denominator abort-rate rows require explicit schema-sensitive comparison.
 
 ## 13. Future Work
 

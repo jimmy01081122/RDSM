@@ -87,7 +87,7 @@ Run a short benchmark:
   --threads 2 --write-ratio 0.5 \
   --duration-sec 1 \
   --sold-counter-mode per_product \
-  --latency-sampling reservoir \
+  --latency-sampling bounded_rotation \
   --latency-sample-size 1000
 ```
 
@@ -127,7 +127,9 @@ Run the controlled sold-counter comparison:
 
 ## Latency Sampling Note
 
-The CLI mode is named `reservoir`, but the current implementation is a bounded rotating sample, not statistically uniform Algorithm R reservoir sampling. Treat p95/p99 values as prototype-relative tail indicators under identical collection policy, not as unbiased estimates of the full latency distribution.
+Use `--latency-sampling bounded_rotation` for the mutex-protected bounded rotating buffer. The historical CLI value `reservoir` remains accepted as an alias, but JSON metadata reports the honest canonical name `bounded_rotation`. This is not statistically uniform Algorithm R reservoir sampling. Treat p95/p99 values as prototype-relative tail indicators under identical collection policy, not as unbiased estimates of the full latency distribution. The compatibility keys `latency_us_p50/p95/p99` and `tx_latency_us_p50/p95/p99` report the same sampler-backed values.
+
+Counter schema version 2 reports `logical_tx`, `occ_attempts`, `occ_failed_attempts`, and `final_abort_tx`. The legacy JSON keys `attempted_tx` and `aborted_tx` remain as aliases for `logical_tx` and `final_abort_tx`. Do not silently compare schema-version-2 `abort_rate` against historical rows that used the mixed retry-attempt denominator.
 
 ## VM ENV SETTING
 `/docs/ENVIRONMENT_AND_REPRODUCTION_GUIDE.md`

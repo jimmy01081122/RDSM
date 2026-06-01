@@ -14,7 +14,9 @@ DSMObjectStore::DSMObjectStore()
     memset(objects_, 0, MAX_OBJECTS * sizeof(ObjectHeader));
 
     // Initialize latency histogram (5 buckets)
-    global_stats_.latency_histogram.resize(5, 0);
+    for (auto& bucket : global_stats_.latency_histogram) {
+        bucket.store(0);
+    }
     object_mutexes_.reserve(MAX_OBJECTS);
     object_arbitration_mutexes_.reserve(MAX_OBJECTS);
     for (uint32_t i = 0; i < MAX_OBJECTS; ++i) {

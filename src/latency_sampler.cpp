@@ -77,8 +77,12 @@ void LatencySampler::record(const LatencySample& sample) {
         return;
     }
 
-    // Deterministic bounded reservoir: replace a rotating slot after the reservoir is full.
-    // This avoids unbounded memory while keeping samples spread over the run.
+    // Deterministic bounded rotation buffer (NOT true reservoir sampling):
+    // After the buffer is full, new samples overwrite old ones in round-robin
+    // order (index % sample_size_). This introduces recency bias: later
+    // samples are systematically over-represented compared to earlier ones.
+    // True reservoir sampling (Algorithm R) would use random replacement with
+    // probability (sample_size_ / index) to ensure uniform representation.
     samples_[index % sample_size_] = sample;
 }
 
@@ -190,12 +194,14 @@ uint64_t LatencySampler::now_ns() {
 LatencySamplingMode LatencySampler::parse_mode(const std::string& value) {
     if (value == "off") return LatencySamplingMode::Off;
     if (value == "full") return LatencySamplingMode::Full;
-    if (value == "reservoir") return LatencySamplingMode::Reservoir;
+    if (value == "bounded_rotation" || value == "reservoir") {
+        return LatencySamplingMode::BoundedRotation;
+    }
     throw std::runtime_error("invalid --latency-sampling: " + value);
 }
 
 std::string LatencySampler::mode_name(LatencySamplingMode mode) {
     if (mode == LatencySamplingMode::Off) return "off";
     if (mode == LatencySamplingMode::Full) return "full";
-    return "reservoir";
+    return "bounded_rotation";
 }

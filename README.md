@@ -1,5 +1,6 @@
 # RDSM: Contention-aware Transaction Routing for RDMA-style DSM
-
+Class : AOS (CSIE7010)
+Year : 2026 Spring
 This repository studies contention-aware transaction routing for an RDMA-style DSM prototype under constrained software-RDMA prototyping.
 
 ## Claim Boundary

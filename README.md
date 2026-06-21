@@ -1,4 +1,5 @@
 # RDSM: Contention-aware Transaction Routing for RDMA-style DSM
+- Professor : CW Hsueh
 - Class : AOS (CSIE7010)
 - Year : 2026 Spring
 
